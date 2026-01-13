@@ -111,11 +111,15 @@ the-emperor/
 │   ├── agent.test.ts        # Agent tests
 │   ├── sandbox-integration.test.ts # Basic sandbox tests
 │   ├── sandbox-comprehensive.test.ts # Comprehensive sandbox tests
+│   ├── sandbox-debug.test.ts # Debug mode & card effects tests
 │   └── helpers/             # Test helper utilities
-│       └── data-loader.ts   # Game state data loading helpers
+│       ├── data-loader.ts   # Game state data loading helpers
+│       └── debug-actions.ts # Debug action helpers
 ├── data/                    # Test data
 │   └── payload/
 │       └── sync.json        # Real game sync data sample
+├── docs/                    # Documentation
+│   └── DEBUG_MODE.md        # Debug mode testing guide
 ├── SANDBOX_TESTING.md       # Sandbox testing guide
 ├── package.json
 └── tsconfig.json

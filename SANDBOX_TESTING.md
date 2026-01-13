@@ -50,7 +50,22 @@ TEST_SANDBOX_URL=http://localhost:3000 TEST_SANDBOX_WS_URL=ws://localhost:3000 b
 - フルワークフロー（データロード → 接続 → 通信）
 - プレイヤーデータの解析
 
-### 3. すべてのテストを実行
+### 3. デバッグモードテスト（実装進行中）
+
+```bash
+# デバッグモードとカード効果のテスト
+TEST_SANDBOX_URL=http://localhost:3000 TEST_SANDBOX_WS_URL=ws://localhost:3000 bun test tests/sandbox-debug.test.ts
+```
+
+このテストは以下を検証します：
+- デバッグモードの有効化
+- DebugMakeによるカード作成（実装待ち）
+- カード召喚と効果解決の確認（実装待ち）
+- メッセージシーケンスの追跡
+
+⚠️ **注意**: DebugMake機能はthe-foolサーバー側の実装待ちです。詳細は [DEBUG_MODE.md](./docs/DEBUG_MODE.md) を参照してください。
+
+### 4. すべてのテストを実行
 
 ```bash
 # すべての統合テストを実行
