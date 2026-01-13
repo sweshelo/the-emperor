@@ -85,6 +85,18 @@ export interface Agent {
    * Clear any internal state (e.g., conversation history)
    */
   clearHistory?(): void;
+
+  /**
+   * Called when game state is updated (Sync received)
+   * Used for real-time analysis features
+   */
+  pushGameStateUpdate?(gameState: GameState): void;
+
+  /**
+   * Called when a game event occurs (card effect, etc.)
+   * Used for real-time analysis features
+   */
+  pushGameEvent?(event: string): void;
 }
 
 /**

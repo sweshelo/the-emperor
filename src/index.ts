@@ -77,6 +77,7 @@ function createAgent(
     // Enable AI advisor if API key is available
     if (config.apiKey) {
       console.log("  AI Advisor: ENABLED (use /think, /advice commands)");
+      console.log("  Realtime Analysis: ENABLED (use /comment, /thread commands)");
       return new BuddyAgent(config.playerName, catalogLookup, {
         advisor: {
           apiKey: config.apiKey,
@@ -84,6 +85,11 @@ function createAgent(
         },
         autoEvaluate: true,
         learningRecordsPath: LEARNING_RECORDS_PATH,
+        threadManager: {
+          apiKey: config.apiKey,
+          model: "claude-3-5-haiku-20241022",
+          debounceMs: 1000,
+        },
       });
     }
 

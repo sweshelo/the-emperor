@@ -186,6 +186,11 @@ export class GameController {
     console.log(`[Controller] Sync - Round: ${state.game.round}, Turn: ${state.game.turn}`);
     this.stateManager.updateState(state);
 
+    // Notify agent about state update (for real-time analysis)
+    if (this.agent.pushGameStateUpdate) {
+      this.agent.pushGameStateUpdate(state);
+    }
+
     // If we received defrost before Sync, now we can act
     await this.tryAct();
   }

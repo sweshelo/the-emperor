@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useCallback, useEffect } from "react";
-import { render, Box, Text, useInput, useApp, useStdin } from "ink";
+import { render, Box, Text, Static, useInput, useApp, useStdin } from "ink";
 import TextInput from "ink-text-input";
 
 /**
@@ -49,6 +49,13 @@ const MESSAGE_PREFIX: Record<TuiMessage["type"], string> = {
 };
 
 /**
+ * Message with unique key for Static rendering
+ */
+interface TuiMessageWithKey extends TuiMessage {
+  key: number;
+}
+
+/**
  * Main TUI Component
  */
 function BuddyTuiApp({
@@ -89,42 +96,32 @@ function BuddyTuiApp({
     [onCommand]
   );
 
-  // Get last N messages to display
-  const displayMessages = messages.slice(-20);
+  // Add keys to messages for Static rendering
+  const messagesWithKeys: TuiMessageWithKey[] = messages.map((msg, index) => ({
+    ...msg,
+    key: index,
+  }));
 
   return (
-    <Box flexDirection="column" height="100%">
-      {/* Header */}
-      <Box borderStyle="single" borderColor="blue" paddingX={1}>
-        <Text color="blue" bold>
-          THE EMPEROR - Buddy Mode
-        </Text>
-        <Text> | </Text>
-        <Text color="yellow">{gameStatus}</Text>
-      </Box>
-
-      {/* Message Area */}
-      <Box
-        flexDirection="column"
-        flexGrow={1}
-        borderStyle="single"
-        borderColor="gray"
-        paddingX={1}
-        paddingY={0}
-      >
-        {displayMessages.map((msg, index) => (
-          <Box key={index}>
+    <Box flexDirection="column">
+      {/* Message Area - Static renders once, then scrolls naturally in terminal */}
+      <Static items={messagesWithKeys}>
+        {(msg) => (
+          <Box key={msg.key}>
             <Text color={MESSAGE_COLORS[msg.type]}>{MESSAGE_PREFIX[msg.type]} </Text>
             <Text color={MESSAGE_COLORS[msg.type]}>{msg.content}</Text>
           </Box>
-        ))}
-      </Box>
+        )}
+      </Static>
 
-      {/* Input Area - Always enabled for input */}
-      <Box borderStyle="single" borderColor={isInputEnabled ? "green" : "yellow"} paddingX={1}>
+      {/* Input Area - Always at the bottom of output */}
+      <Box>
+        <Text color="gray">[</Text>
+        <Text color="yellow">{gameStatus}</Text>
+        <Text color="gray">] </Text>
         <Text color={isInputEnabled ? "green" : "yellow"}>{prompt} </Text>
         <TextInput value={input} onChange={setInput} onSubmit={handleSubmit} />
-        {!isInputEnabled && <Text color="gray"> (opponent's turn)</Text>}
+        {!isInputEnabled && <Text color="gray"> (waiting)</Text>}
       </Box>
     </Box>
   );

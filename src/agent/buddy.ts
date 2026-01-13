@@ -6,9 +6,10 @@
 import type { Agent, DecisionContext, ParsedAction } from "../types/agent.ts";
 import type { IAtom } from "../../suit/types/game/card/index.ts";
 import { type CatalogCard, isJokerCard } from "../schemas/catalog.ts";
-import type { ICard, ChoicesMessage } from "../types/game.ts";
+import type { ICard, ChoicesMessage, GameState } from "../types/game.ts";
 import { AIAdvisor, type AdvisorConfig, type LearningRecord } from "./advisor.ts";
 import { TuiController } from "./buddy-tui.tsx";
+import { ThreadManager, type ThreadManagerConfig } from "./thread-manager.ts";
 
 /**
  * Type guard to check if an IAtom has catalogId (is actually an ICard)
@@ -90,6 +91,8 @@ export interface BuddyAgentConfig {
   autoEvaluate?: boolean;
   /** Path to save/load learning records */
   learningRecordsPath?: string;
+  /** Thread manager configuration for real-time analysis (optional) */
+  threadManager?: ThreadManagerConfig;
 }
 
 /**
@@ -100,6 +103,7 @@ export class BuddyAgent implements Agent {
   private catalogLookup: (id: string) => CatalogCard | undefined;
   private tui: TuiController;
   private advisor: AIAdvisor | null = null;
+  private threadManager: ThreadManager | null = null;
   private autoEvaluate: boolean;
   private learningRecordsPath: string | null;
   private lastContext: DecisionContext | null = null;
@@ -112,20 +116,48 @@ export class BuddyAgent implements Agent {
     this.catalogLookup = catalogLookup;
     this.autoEvaluate = config?.autoEvaluate ?? false;
     this.learningRecordsPath = config?.learningRecordsPath ?? null;
+    this.config = config;
 
-    // Initialize TUI
+    // TUI will be initialized lazily on first use
     this.tui = new TuiController();
+  }
+
+  private config?: BuddyAgentConfig;
+  private tuiStarted = false;
+
+  /**
+   * Start the TUI (called lazily on first use)
+   */
+  private ensureTuiStarted(): void {
+    if (this.tuiStarted) return;
+    this.tuiStarted = true;
+
     this.tui.start();
 
     // Initialize AI advisor if API key provided
-    if (config?.advisor) {
-      this.advisor = new AIAdvisor(config.advisor, catalogLookup);
+    if (this.config?.advisor) {
+      this.advisor = new AIAdvisor(this.config.advisor, this.catalogLookup);
       this.tui.addMessage("system", "AIアドバイザーを有効化しました");
 
       // Load existing learning records
       if (this.learningRecordsPath) {
         this.loadLearningRecords();
       }
+    }
+
+    // Initialize Thread Manager for real-time analysis
+    if (this.config?.threadManager) {
+      this.threadManager = new ThreadManager(
+        {
+          ...this.config.threadManager,
+          onAnalysis: (analysis) => {
+            this.tui.addMessage("ai", "--- リアルタイム分析 ---");
+            this.tui.addLines("ai", analysis);
+          },
+        },
+        this.catalogLookup
+      );
+      this.tui.addMessage("system", "リアルタイム分析を有効化しました");
     }
   }
 
@@ -272,6 +304,14 @@ export class BuddyAgent implements Agent {
       this.tui.addMessage("ai", "/advice <action>      - Get advice for specific action");
       this.tui.addMessage("ai", "/records              - Show learning records summary");
       this.tui.addMessage("ai", "/save                 - Save learning records");
+    }
+
+    // Thread manager commands
+    if (this.threadManager) {
+      this.tui.addMessage("ai", "--- REALTIME ANALYSIS COMMANDS ---");
+      this.tui.addMessage("ai", "/comment <text>       - Add pilot comment to AI thread");
+      this.tui.addMessage("ai", "/thread               - Show AI thread summary");
+      this.tui.addMessage("ai", "/clear-thread         - Clear AI thread history");
     }
   }
 
@@ -514,12 +554,55 @@ export class BuddyAgent implements Agent {
    * Returns true if command was handled
    */
   private async handleAdvisorCommand(input: string, context: DecisionContext): Promise<boolean> {
+    const parts = input.split(/\s+/);
+    const command = parts[0]?.toLowerCase();
+
+    // Thread manager commands (can work without advisor)
+    if (this.threadManager) {
+      switch (command) {
+        case "/comment": {
+          const comment = parts.slice(1).join(" ");
+          if (!comment) {
+            this.tui.addMessage("system", "Usage: /comment <your comment>");
+            this.tui.addMessage("system", "Example: /comment この分析は違う、相手はアグロデッキだ");
+            return true;
+          }
+          this.threadManager.addPilotComment(comment);
+          this.tui.addMessage("user", `[パイロット] ${comment}`);
+          return true;
+        }
+
+        case "/thread": {
+          const thread = this.threadManager.getThread();
+          this.tui.addMessage("ai", "--- AIスレッド履歴 ---");
+          this.tui.addMessage("ai", `メッセージ数: ${thread.length}`);
+
+          if (thread.length > 0) {
+            this.tui.addMessage("ai", "最近のやり取り:");
+            const recentMessages = thread.slice(-6);
+            for (const msg of recentMessages) {
+              const roleLabel = msg.role === "user" ? "[状況/パイロット]" : "[AI]";
+              const preview = msg.content.length > 100
+                ? msg.content.slice(0, 100) + "..."
+                : msg.content;
+              this.tui.addMessage("ai", `  ${roleLabel} ${preview}`);
+            }
+          }
+          return true;
+        }
+
+        case "/clear-thread": {
+          this.threadManager.clearThread();
+          this.tui.addMessage("system", "AIスレッド履歴をクリアしました");
+          return true;
+        }
+      }
+    }
+
+    // AI advisor commands
     if (!this.advisor) {
       return false;
     }
-
-    const parts = input.split(/\s+/);
-    const command = parts[0]?.toLowerCase();
 
     switch (command) {
       case "/think": {
@@ -587,6 +670,9 @@ export class BuddyAgent implements Agent {
    * Main decision loop - display state and wait for user command
    */
   async decideAction(context: DecisionContext): Promise<ParsedAction> {
+    // Ensure TUI is started
+    this.ensureTuiStarted();
+
     // Store context for evaluation
     this.lastContext = context;
 
@@ -726,6 +812,9 @@ export class BuddyAgent implements Agent {
    * Mulligan decision - ask user to keep or redraw
    */
   async decideMulligan(hand: IAtom[], playerId: string): Promise<ParsedAction> {
+    // Ensure TUI is started
+    this.ensureTuiStarted();
+
     this.tui.setGameStatus("Mulligan Phase");
     this.tui.addMessage("game", "=".repeat(50));
     this.tui.addMessage("game", "MULLIGAN DECISION");
@@ -851,10 +940,37 @@ export class BuddyAgent implements Agent {
   }
 
   /**
+   * Get Thread Manager (for external access)
+   */
+  getThreadManager(): ThreadManager | null {
+    return this.threadManager;
+  }
+
+  /**
    * Get TUI controller (for external access)
    */
   getTui(): TuiController {
     return this.tui;
+  }
+
+  /**
+   * Push game state update to thread manager
+   * Call this when Sync message is received
+   */
+  pushGameStateUpdate(gameState: GameState): void {
+    if (this.threadManager) {
+      this.threadManager.pushSyncDiff(gameState);
+    }
+  }
+
+  /**
+   * Push game event to thread manager
+   * Call this when a game event (card effect, etc.) occurs
+   */
+  pushGameEvent(event: string): void {
+    if (this.threadManager) {
+      this.threadManager.pushGameEvent(event);
+    }
   }
 
   /**
@@ -868,7 +984,14 @@ export class BuddyAgent implements Agent {
       });
     }
 
-    // Stop TUI
-    this.tui.stop();
+    // Clear thread manager
+    if (this.threadManager) {
+      this.threadManager.clearThread();
+    }
+
+    // Stop TUI only if it was started
+    if (this.tuiStarted) {
+      this.tui.stop();
+    }
   }
 }
