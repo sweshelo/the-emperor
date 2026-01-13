@@ -26,6 +26,43 @@ function ensureActionSender(): (action: ClientAction) => void {
 }
 
 /**
+ * Type-safe getter for string arguments
+ */
+function getString(args: Record<string, unknown>, key: string): string {
+  const value = args[key];
+  if (typeof value !== "string") {
+    throw new Error(`Expected ${key} to be a string`);
+  }
+  return value;
+}
+
+/**
+ * Type-safe getter for boolean arguments
+ */
+function getBoolean(args: Record<string, unknown>, key: string): boolean {
+  const value = args[key];
+  if (typeof value !== "boolean") {
+    throw new Error(`Expected ${key} to be a boolean`);
+  }
+  return value;
+}
+
+/**
+ * Type-safe getter for optional string array arguments
+ */
+function getOptionalStringArray(
+  args: Record<string, unknown>,
+  key: string
+): string[] | undefined {
+  const value = args[key];
+  if (value === undefined || value === null) return undefined;
+  if (!Array.isArray(value) || !value.every((v) => typeof v === "string")) {
+    throw new Error(`Expected ${key} to be a string array`);
+  }
+  return value;
+}
+
+/**
  * Summon a unit from hand
  */
 export const summonUnitTool: ToolDefinition = {
@@ -47,10 +84,12 @@ export const summonUnitTool: ToolDefinition = {
   },
   handler: async (args) => {
     const sender = ensureActionSender();
+    const playerId = getString(args, "playerId");
+    const cardId = getString(args, "cardId");
     const action: ClientAction = {
       type: "UnitDrive",
-      player: args.playerId as string,
-      target: { id: args.cardId as string },
+      player: playerId,
+      target: { id: cardId },
     };
 
     sender(action);
@@ -59,7 +98,7 @@ export const summonUnitTool: ToolDefinition = {
       content: [
         {
           type: "text",
-          text: `Summoned unit: ${args.cardId}`,
+          text: `Summoned unit: ${cardId}`,
         },
       ],
     };
@@ -92,11 +131,14 @@ export const evolveUnitTool: ToolDefinition = {
   },
   handler: async (args) => {
     const sender = ensureActionSender();
+    const playerId = getString(args, "playerId");
+    const evolutionCardId = getString(args, "evolutionCardId");
+    const baseUnitId = getString(args, "baseUnitId");
     const action: ClientAction = {
       type: "EvolveDrive",
-      player: args.playerId as string,
-      target: { id: args.evolutionCardId as string },
-      source: { id: args.baseUnitId as string },
+      player: playerId,
+      target: { id: evolutionCardId },
+      source: { id: baseUnitId },
     };
 
     sender(action);
@@ -105,7 +147,7 @@ export const evolveUnitTool: ToolDefinition = {
       content: [
         {
           type: "text",
-          text: `Evolved unit ${args.baseUnitId} with ${args.evolutionCardId}`,
+          text: `Evolved unit ${baseUnitId} with ${evolutionCardId}`,
         },
       ],
     };
@@ -134,10 +176,12 @@ export const useJokerTool: ToolDefinition = {
   },
   handler: async (args) => {
     const sender = ensureActionSender();
+    const playerId = getString(args, "playerId");
+    const jokerId = getString(args, "jokerId");
     const action: ClientAction = {
       type: "JokerDrive",
-      player: args.playerId as string,
-      target: { id: args.jokerId as string },
+      player: playerId,
+      target: { id: jokerId },
     };
 
     sender(action);
@@ -146,7 +190,7 @@ export const useJokerTool: ToolDefinition = {
       content: [
         {
           type: "text",
-          text: `Used JOKER: ${args.jokerId}`,
+          text: `Used JOKER: ${jokerId}`,
         },
       ],
     };
@@ -179,12 +223,15 @@ export const setTriggerTool: ToolDefinition = {
   },
   handler: async (args) => {
     const sender = ensureActionSender();
+    const playerId = getString(args, "playerId");
+    const cardId = getString(args, "cardId");
+    const catalogId = getString(args, "catalogId");
     const action: ClientAction = {
       type: "TriggerSet",
-      player: args.playerId as string,
+      player: playerId,
       target: {
-        id: args.cardId as string,
-        catalogId: args.catalogId as string,
+        id: cardId,
+        catalogId: catalogId,
       },
     };
 
@@ -194,7 +241,7 @@ export const setTriggerTool: ToolDefinition = {
       content: [
         {
           type: "text",
-          text: `Set trigger/intercept: ${args.cardId}`,
+          text: `Set trigger/intercept: ${cardId}`,
         },
       ],
     };
@@ -223,10 +270,12 @@ export const attackTool: ToolDefinition = {
   },
   handler: async (args) => {
     const sender = ensureActionSender();
+    const playerId = getString(args, "playerId");
+    const unitId = getString(args, "unitId");
     const action: ClientAction = {
       type: "Attack",
-      player: args.playerId as string,
-      target: { id: args.unitId as string },
+      player: playerId,
+      target: { id: unitId },
     };
 
     sender(action);
@@ -235,7 +284,7 @@ export const attackTool: ToolDefinition = {
       content: [
         {
           type: "text",
-          text: `Attacked with unit: ${args.unitId}`,
+          text: `Attacked with unit: ${unitId}`,
         },
       ],
     };
@@ -264,10 +313,12 @@ export const useBootAbilityTool: ToolDefinition = {
   },
   handler: async (args) => {
     const sender = ensureActionSender();
+    const playerId = getString(args, "playerId");
+    const unitId = getString(args, "unitId");
     const action: ClientAction = {
       type: "Boot",
-      player: args.playerId as string,
-      target: { id: args.unitId as string },
+      player: playerId,
+      target: { id: unitId },
     };
 
     sender(action);
@@ -276,7 +327,7 @@ export const useBootAbilityTool: ToolDefinition = {
       content: [
         {
           type: "text",
-          text: `Used boot ability of unit: ${args.unitId}`,
+          text: `Used boot ability of unit: ${unitId}`,
         },
       ],
     };
@@ -305,10 +356,12 @@ export const withdrawUnitTool: ToolDefinition = {
   },
   handler: async (args) => {
     const sender = ensureActionSender();
+    const playerId = getString(args, "playerId");
+    const unitId = getString(args, "unitId");
     const action: ClientAction = {
       type: "Withdrawal",
-      player: args.playerId as string,
-      target: { id: args.unitId as string },
+      player: playerId,
+      target: { id: unitId },
     };
 
     sender(action);
@@ -317,7 +370,7 @@ export const withdrawUnitTool: ToolDefinition = {
       content: [
         {
           type: "text",
-          text: `Withdrew unit: ${args.unitId}`,
+          text: `Withdrew unit: ${unitId}`,
         },
       ],
     };
@@ -351,10 +404,11 @@ export const respondToChoiceTool: ToolDefinition = {
   },
   handler: async (args) => {
     const sender = ensureActionSender();
-    const choiceIds = (args.choiceIds as string[]) || [];
+    const promptId = getString(args, "promptId");
+    const choiceIds = getOptionalStringArray(args, "choiceIds") || [];
     const action: ClientAction = {
       type: "Choose",
-      promptId: args.promptId as string,
+      promptId: promptId,
       choice: choiceIds.length > 0 ? choiceIds : undefined,
     };
 
@@ -364,9 +418,10 @@ export const respondToChoiceTool: ToolDefinition = {
       content: [
         {
           type: "text",
-          text: choiceIds.length > 0
-            ? `Responded to choice with: ${choiceIds.join(", ")}`
-            : "Declined/cancelled choice",
+          text:
+            choiceIds.length > 0
+              ? `Responded to choice with: ${choiceIds.join(", ")}`
+              : "Declined/cancelled choice",
         },
       ],
     };
@@ -395,10 +450,12 @@ export const endTurnTool: ToolDefinition = {
   },
   handler: async (args) => {
     const sender = ensureActionSender();
+    const promptId = getString(args, "promptId");
+    const playerId = getString(args, "playerId");
     const action: ClientAction = {
       type: "Continue",
-      promptId: args.promptId as string,
-      player: args.playerId as string,
+      promptId: promptId,
+      player: playerId,
     };
 
     sender(action);
@@ -436,10 +493,12 @@ export const mulliganTool: ToolDefinition = {
   },
   handler: async (args) => {
     const sender = ensureActionSender();
+    const playerId = getString(args, "playerId");
+    const keep = getBoolean(args, "keep");
     const action: ClientAction = {
       type: "Mulligan",
-      action: (args.keep as boolean) ? "done" : "retry",
-      player: args.playerId as string,
+      action: keep ? "done" : "retry",
+      player: playerId,
     };
 
     sender(action);
@@ -448,7 +507,7 @@ export const mulliganTool: ToolDefinition = {
       content: [
         {
           type: "text",
-          text: (args.keep as boolean) ? "Kept hand" : "Redrawing hand",
+          text: keep ? "Kept hand" : "Redrawing hand",
         },
       ],
     };

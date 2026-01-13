@@ -15,6 +15,7 @@ export function loadSyncGameState(): GameState {
 
   // Convert to GameState type
   // Note: The JSON structure should match our GameState interface
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   return body as unknown as GameState;
 }
 
@@ -39,6 +40,7 @@ export function getVisibleHandCards(state: GameState, playerId: string) {
   const player = getPlayer(state, playerId);
   if (!player) return [];
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return player.hand.filter((card: any) => card.catalogId !== undefined);
 }
 

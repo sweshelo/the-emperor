@@ -4,6 +4,14 @@
 
 import type { ServerMessage, ClientMessage } from "../types/game.ts";
 
+/**
+ * Type guard to check if data is a valid ServerMessage
+ */
+function isServerMessage(data: unknown): data is ServerMessage {
+  if (typeof data !== "object" || data === null) return false;
+  return "action" in data && "payload" in data;
+}
+
 export type MessageHandler = (message: ServerMessage) => void;
 export type ErrorHandler = (error: Error) => void;
 export type ConnectionHandler = () => void;
@@ -59,8 +67,11 @@ export class GameWebSocketClient {
 
         this.ws.onmessage = (event) => {
           try {
-            const message = JSON.parse(event.data) as ServerMessage;
-            this.messageHandlers.forEach((handler) => handler(message));
+            const data: unknown = JSON.parse(event.data);
+            if (!isServerMessage(data)) {
+              throw new Error("Invalid server message format");
+            }
+            this.messageHandlers.forEach((handler) => handler(data));
           } catch (error) {
             console.error("[WebSocket] Failed to parse message:", error);
             const err = error instanceof Error ? error : new Error(String(error));

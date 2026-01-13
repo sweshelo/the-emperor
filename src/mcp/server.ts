@@ -19,6 +19,14 @@ import { SandboxClient } from "../sandbox/client.ts";
 import { gameStateManager } from "../game/state.ts";
 import type { ServerMessage } from "../types/game.ts";
 
+// Type for MCP CallTool request
+interface CallToolRequest {
+  params: {
+    name: string;
+    arguments?: Record<string, unknown>;
+  };
+}
+
 // Combine all tools
 const allTools = [
   ...catalogTools,
@@ -67,7 +75,7 @@ function createServer() {
 
   // Call tool handler
   // @ts-ignore - MCP SDK type compatibility issue
-  server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
+  server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest) => {
     const toolName = request.params.name;
     const tool = allTools.find((t) => t.name === toolName);
 

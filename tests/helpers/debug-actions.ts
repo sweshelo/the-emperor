@@ -3,8 +3,7 @@
  */
 
 import type { GameWebSocketClient } from "../../src/websocket/client.ts";
-import type { PlayerEntryPayload, DebugMakePayload, UnitDrivePayload, ClientMessage } from "../../src/types/game.ts";
-import type { IAtom } from "../../suit/types/index.ts";
+import type { ClientMessage } from "../../src/types/game.ts";
 
 /**
  * Send Continue message to acknowledge DisplayEffect
@@ -204,9 +203,11 @@ export function unitDrive(
  * @returns The matched message
  */
 export async function waitForMessage(
-  messages: any[],
+   
+  messages: unknown[],
   messageType: string,
   timeout: number = 5000
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
   const startTime = Date.now();
 
@@ -230,9 +231,11 @@ export async function waitForMessage(
  * @returns The matched DisplayEffect message
  */
 export async function waitForDisplayEffect(
-  messages: any[],
+   
+  messages: unknown[],
   effectTitle: string,
   timeout: number = 5000
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
   const startTime = Date.now();
 
@@ -258,9 +261,11 @@ export async function waitForDisplayEffect(
  * @returns The Defrost message
  */
 export async function waitForDefrost(
-  messages: any[],
+   
+  messages: unknown[],
   afterIndex: number = 0,
   timeout: number = 5000
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
   const startTime = Date.now();
 
@@ -285,9 +290,11 @@ export async function waitForDefrost(
  * @returns The next Sync message
  */
 export async function waitForNextSync(
-  messages: any[],
+   
+  messages: unknown[],
   afterIndex: number,
   timeout: number = 5000
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
   const startTime = Date.now();
 
@@ -331,6 +338,7 @@ export async function waitForCondition(
  * Extract player state from Sync message
  * Note: syncMessage should be the full Message with action and payload
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function extractPlayerState(syncMessage: any, playerId: string) {
   return syncMessage.payload?.body?.players?.[playerId];
 }
@@ -339,7 +347,9 @@ export function extractPlayerState(syncMessage: any, playerId: string) {
  * Compare hand sizes before and after an action
  */
 export function compareHandSize(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   beforeState: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   afterState: any,
   playerId: string
 ): {
@@ -363,7 +373,9 @@ export function compareHandSize(
  * Compare field sizes before and after an action
  */
 export function compareFieldSize(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   beforeState: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   afterState: any,
   playerId: string
 ): {
@@ -388,12 +400,15 @@ export function compareFieldSize(
  * Note: Sync messages should be the full Message with action and payload
  */
 export function verifyCardAddedToHand(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   beforeSync: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   afterSync: any,
   playerId: string,
   expectedColor?: number
 ): {
   success: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   addedCards: any[];
   message: string;
 } {
@@ -401,7 +416,9 @@ export function verifyCardAddedToHand(
   const afterHand = afterSync.payload?.body?.players?.[playerId]?.hand || [];
 
   // Find new cards (cards in after but not in before)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const beforeIds = new Set(beforeHand.map((card: any) => card.id));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const addedCards = afterHand.filter((card: any) => !beforeIds.has(card.id));
 
   if (addedCards.length === 0) {
@@ -414,7 +431,9 @@ export function verifyCardAddedToHand(
 
   // Check color if specified
   if (expectedColor !== undefined) {
+     
     const hasCorrectColor = addedCards.some(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (card: any) => card.catalogId && card.color === expectedColor
     );
 
@@ -438,6 +457,7 @@ export function verifyCardAddedToHand(
  * Debug helper: Print current game state summary
  * Note: syncMessage should be the full Message with action and payload
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function printGameStateSummary(syncMessage: any, title: string = "Game State") {
   console.log(`\n=== ${title} ===`);
 
@@ -447,6 +467,7 @@ export function printGameStateSummary(syncMessage: any, title: string = "Game St
     return;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   Object.entries(players).forEach(([playerId, player]: [string, any]) => {
     console.log(`\nPlayer: ${player.name} (${playerId})`);
     console.log(`  Life: ${player.life?.current}/${player.life?.max}`);

@@ -3,7 +3,78 @@
  */
 
 import type { ToolDefinition } from "../types/index.ts";
-import { catalogService } from "../../catalog/index.ts";
+import { catalogService, type CatalogCard } from "../../catalog/index.ts";
+
+/**
+ * Type-safe getter for string arguments
+ */
+function getString(args: Record<string, unknown>, key: string): string {
+  const value = args[key];
+  if (typeof value !== "string") {
+    throw new Error(`Expected ${key} to be a string`);
+  }
+  return value;
+}
+
+/**
+ * Type-safe getter for optional number arguments
+ */
+function getOptionalNumber(
+  args: Record<string, unknown>,
+  key: string,
+  defaultValue: number
+): number {
+  const value = args[key];
+  if (value === undefined || value === null) return defaultValue;
+  if (typeof value !== "number") {
+    throw new Error(`Expected ${key} to be a number`);
+  }
+  return value;
+}
+
+/**
+ * Type-safe getter for required number arguments
+ */
+function getNumber(args: Record<string, unknown>, key: string): number {
+  const value = args[key];
+  if (typeof value !== "number") {
+    throw new Error(`Expected ${key} to be a number`);
+  }
+  return value;
+}
+
+/**
+ * Type guard to check if a string is a valid card type
+ */
+function isValidCardType(value: string): value is CatalogCard["type"] {
+  return (
+    value === "unit" ||
+    value === "trigger" ||
+    value === "intercept" ||
+    value === "advanced_unit" ||
+    value === "virus" ||
+    value === "joker"
+  );
+}
+
+/**
+ * Type-safe getter for card type arguments
+ */
+function getCardType(
+  args: Record<string, unknown>,
+  key: string
+): CatalogCard["type"] {
+  const value = args[key];
+  if (typeof value !== "string") {
+    throw new Error(`Expected ${key} to be a string`);
+  }
+  if (!isValidCardType(value)) {
+    throw new Error(
+      `Invalid card type: ${value}. Must be one of: unit, trigger, intercept, advanced_unit, virus, joker`
+    );
+  }
+  return value;
+}
 
 /**
  * Get card information by catalog ID
@@ -22,7 +93,7 @@ export const getCardTool: ToolDefinition = {
     required: ["catalogId"],
   },
   handler: async (args) => {
-    const catalogId = args.catalogId as string;
+    const catalogId = getString(args, "catalogId");
     const card = catalogService.getCard(catalogId);
 
     if (!card) {
@@ -69,8 +140,8 @@ export const searchCardsByNameTool: ToolDefinition = {
     required: ["query"],
   },
   handler: async (args) => {
-    const query = args.query as string;
-    const limit = (args.limit as number) || 10;
+    const query = getString(args, "query");
+    const limit = getOptionalNumber(args, "limit", 10);
     const results = catalogService.searchByName(query).slice(0, limit);
 
     return {
@@ -105,8 +176,8 @@ export const searchCardsByAbilityTool: ToolDefinition = {
     required: ["query"],
   },
   handler: async (args) => {
-    const query = args.query as string;
-    const limit = (args.limit as number) || 10;
+    const query = getString(args, "query");
+    const limit = getOptionalNumber(args, "limit", 10);
     const results = catalogService.searchByAbility(query).slice(0, limit);
 
     return {
@@ -142,8 +213,8 @@ export const getCardsByTypeTool: ToolDefinition = {
     required: ["cardType"],
   },
   handler: async (args) => {
-    const cardType = args.cardType as any;
-    const limit = (args.limit as number) || 20;
+    const cardType = getCardType(args, "cardType");
+    const limit = getOptionalNumber(args, "limit", 20);
     const results = catalogService.getCardsByType(cardType).slice(0, limit);
 
     return {
@@ -182,9 +253,9 @@ export const getCardsByCostRangeTool: ToolDefinition = {
     required: ["minCost", "maxCost"],
   },
   handler: async (args) => {
-    const minCost = args.minCost as number;
-    const maxCost = args.maxCost as number;
-    const limit = (args.limit as number) || 20;
+    const minCost = getNumber(args, "minCost");
+    const maxCost = getNumber(args, "maxCost");
+    const limit = getOptionalNumber(args, "limit", 20);
     const results = catalogService
       .getCardsByCostRange(minCost, maxCost)
       .slice(0, limit);

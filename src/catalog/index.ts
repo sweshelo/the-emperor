@@ -48,7 +48,7 @@ export class CatalogService {
           console.warn(`[Catalog] Skipping invalid card entry:`, item);
           continue;
         }
-        this.catalog.set(item.id, item as CatalogCard);
+        this.catalog.set(item.id, item);
       }
       console.log(`[Catalog] Loaded ${this.catalog.size} cards`);
     } catch (error) {
@@ -63,15 +63,21 @@ export class CatalogService {
     if (typeof item !== "object" || item === null) {
       return false;
     }
-    const obj = item as Record<string, unknown>;
     return (
-      typeof obj.id === "string" &&
-      typeof obj.name === "string" &&
-      typeof obj.rarity === "string" &&
-      typeof obj.cost === "number" &&
-      typeof obj.color === "number" &&
-      typeof obj.ability === "string" &&
-      typeof obj.type === "string"
+      "id" in item &&
+      typeof item.id === "string" &&
+      "name" in item &&
+      typeof item.name === "string" &&
+      "rarity" in item &&
+      typeof item.rarity === "string" &&
+      "cost" in item &&
+      typeof item.cost === "number" &&
+      "color" in item &&
+      typeof item.color === "number" &&
+      "ability" in item &&
+      typeof item.ability === "string" &&
+      "type" in item &&
+      typeof item.type === "string"
     );
   }
 

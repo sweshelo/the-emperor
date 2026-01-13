@@ -4,7 +4,7 @@
  */
 
 import type { IPlayer, IUnit, ICard, IDelta, Rule } from "../../suit/types/index.ts";
-import type { Message, Action } from "../../suit/types/message/message.ts";
+import type { Message } from "../../suit/types/message/message.ts";
 import type {
   Payload,
   PlayerEntryPayload,
@@ -82,7 +82,7 @@ export interface OperationMessage {
 export interface Option {
   id: string;
   name: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**

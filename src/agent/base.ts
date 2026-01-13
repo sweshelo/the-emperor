@@ -10,7 +10,7 @@ import type { Agent, GameState, Action } from "../types/index.ts";
 export class BaseAgent implements Agent {
   constructor(protected name: string) {}
 
-  async decideAction(state: GameState): Promise<Action> {
+  async decideAction(_state: GameState): Promise<Action> {
     // TODO: Implement decision logic
     throw new Error("Not implemented");
   }

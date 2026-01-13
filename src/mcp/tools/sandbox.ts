@@ -7,33 +7,69 @@ import { SandboxClient } from "../../sandbox/client.ts";
 import { gameStateManager } from "../../game/state.ts";
 
 /**
+ * Type-safe getter for boolean arguments
+ */
+function getBoolean(args: Record<string, unknown>, key: string): boolean {
+  const value = args[key];
+  if (typeof value !== "boolean") {
+    throw new Error(`Expected ${key} to be a boolean`);
+  }
+  return value;
+}
+
+/**
+ * Type-safe getter for string arguments
+ */
+function getString(args: Record<string, unknown>, key: string): string {
+  const value = args[key];
+  if (typeof value !== "string") {
+    throw new Error(`Expected ${key} to be a string`);
+  }
+  return value;
+}
+
+/**
+ * Type guard to check if a value is a plain object
+ */
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return (
+    value !== null && typeof value === "object" && !Array.isArray(value)
+  );
+}
+
+/**
+ * Type-safe getter for optional object arguments
+ */
+function getOptionalObject(
+  args: Record<string, unknown>,
+  key: string
+): Record<string, unknown> | undefined {
+  const value = args[key];
+  if (value === undefined || value === null) return undefined;
+  if (!isPlainObject(value)) {
+    throw new Error(`Expected ${key} to be an object`);
+  }
+  return value;
+}
+
+/**
  * Deep merge two objects, recursively merging nested objects
  */
-function deepMerge<T extends Record<string, unknown>>(
-  target: T,
-  source: Partial<T>
-): T {
-  const result = { ...target };
+function deepMerge(
+  target: Record<string, unknown>,
+  source: Record<string, unknown>
+): Record<string, unknown> {
+  const result: Record<string, unknown> = { ...target };
 
   for (const key in source) {
     if (Object.prototype.hasOwnProperty.call(source, key)) {
       const sourceValue = source[key];
       const targetValue = result[key];
 
-      if (
-        sourceValue !== null &&
-        typeof sourceValue === "object" &&
-        !Array.isArray(sourceValue) &&
-        targetValue !== null &&
-        typeof targetValue === "object" &&
-        !Array.isArray(targetValue)
-      ) {
-        result[key] = deepMerge(
-          targetValue as Record<string, unknown>,
-          sourceValue as Record<string, unknown>
-        ) as T[Extract<keyof T, string>];
+      if (isPlainObject(sourceValue) && isPlainObject(targetValue)) {
+        result[key] = deepMerge(targetValue, sourceValue);
       } else {
-        result[key] = sourceValue as T[Extract<keyof T, string>];
+        result[key] = sourceValue;
       }
     }
   }
@@ -164,9 +200,9 @@ export const loadSandboxStateTool: ToolDefinition = {
   },
   handler: async (args) => {
     const client = ensureSandboxClient();
-    const useCurrentState = args.useCurrentState as boolean;
+    const useCurrentState = getBoolean(args, "useCurrentState");
 
-    let state;
+    let state: Record<string, unknown>;
     if (useCurrentState) {
       const currentState = gameStateManager.getState();
       if (!currentState) {
@@ -182,7 +218,8 @@ export const loadSandboxStateTool: ToolDefinition = {
       }
       state = currentState;
     } else {
-      if (!args.customState) {
+      const customState = getOptionalObject(args, "customState");
+      if (!customState) {
         return {
           content: [
             {
@@ -193,7 +230,7 @@ export const loadSandboxStateTool: ToolDefinition = {
           isError: true,
         };
       }
-      state = args.customState as any;
+      state = customState;
     }
 
     try {
@@ -325,8 +362,8 @@ export const evaluateMoveTool: ToolDefinition = {
   },
   handler: async (args) => {
     const client = ensureSandboxClient();
-    const moveDescription = args.moveDescription as string;
-    const stateModifications = args.stateModifications as any;
+    const moveDescription = getString(args, "moveDescription");
+    const stateModifications = getOptionalObject(args, "stateModifications");
 
     console.log(`[Sandbox] Evaluating move: ${moveDescription}`);
 
@@ -346,7 +383,7 @@ export const evaluateMoveTool: ToolDefinition = {
       }
 
       // Apply modifications if provided (deep merge to preserve nested structures)
-      let testState = currentState;
+      let testState: Record<string, unknown> = currentState;
       if (stateModifications) {
         testState = deepMerge(currentState, stateModifications);
       }

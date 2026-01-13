@@ -19,12 +19,13 @@ interface CardAtom {
  * Check if an atom has a catalogId
  */
 function hasCardId(atom: unknown): atom is CardAtom {
-  return (
-    typeof atom === "object" &&
-    atom !== null &&
-    "catalogId" in atom &&
-    typeof (atom as CardAtom).catalogId === "string"
-  );
+  if (typeof atom !== "object" || atom === null) {
+    return false;
+  }
+  if (!("catalogId" in atom)) {
+    return false;
+  }
+  return typeof atom.catalogId === "string";
 }
 
 /**
