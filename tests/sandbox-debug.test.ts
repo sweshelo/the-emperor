@@ -107,11 +107,15 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
       const baseState = loadSyncGameState();
       const debugState = enableDebugMode(baseState);
 
+      // Get player info
+      const playerIds = getPlayerIds(debugState);
+      const playerId = playerIds[0];
+      const playerInfo = debugState.players[playerId];
+
       await client.createRoom();
       await client.loadState(debugState);
-      await client.startGame();
 
-      // Connect via WebSocket
+      // Connect via WebSocket BEFORE starting game
       wsClient = new GameWebSocketClient({
         url: `${SANDBOX_WS_URL}?roomId=99999`,
         reconnect: false,
@@ -124,11 +128,7 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
       await wsClient.connect();
       await new Promise((resolve) => setTimeout(resolve, 500));
 
-      // Get player info and register
-      const playerIds = getPlayerIds(debugState);
-      const playerId = playerIds[0];
-      const playerInfo = debugState.players[playerId];
-
+      // Register player BEFORE starting game
       const { playerEntry } = await import("./helpers/debug-actions.ts");
       playerEntry(
         wsClient,
@@ -139,7 +139,12 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
         []
       );
 
-      // Wait for Sync messages after registration
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Start game after player registration
+      await client.startGame();
+
+      // Wait for Sync messages after game start
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Check if we received Sync messages
@@ -169,11 +174,21 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
       const baseState = loadSyncGameState();
       const debugState = enableDebugMode(baseState);
 
+      // Get player ID and info from state
+      const playerIds = getPlayerIds(debugState);
+      const playerId = playerIds[0];
+
+      if (!playerId) {
+        throw new Error("No player ID found");
+      }
+
+      const playerInfo = debugState.players[playerId];
+      console.log(`Player: ${playerInfo.name} (${playerId})`);
+
       await client.createRoom();
       await client.loadState(debugState);
-      await client.startGame();
 
-      // Connect via WebSocket
+      // Connect via WebSocket BEFORE starting the game
       wsClient = new GameWebSocketClient({
         url: `${SANDBOX_WS_URL}?roomId=99999`,
         reconnect: false,
@@ -193,21 +208,10 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
       await wsClient.connect();
       await new Promise((resolve) => setTimeout(resolve, 500));
 
-      // Get player ID and info from state
-      const playerIds = getPlayerIds(debugState);
-      const playerId = playerIds[0];
-
-      if (!playerId) {
-        throw new Error("No player ID found");
-      }
-
-      const playerInfo = debugState.players[playerId];
-      console.log(`Player: ${playerInfo.name} (${playerId})`);
-
       // Import helpers
       const { playerEntry, debugMakeCard } = await import("./helpers/debug-actions.ts");
 
-      // Register as a player in the room
+      // Register as a player in the room BEFORE starting the game
       console.log("Registering player...");
       playerEntry(
         wsClient,
@@ -218,7 +222,13 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
         []
       );
 
-      // Wait for initial Sync after player registration
+      // Wait for player registration to complete
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // NOW start the game (after player is registered)
+      await client.startGame();
+
+      // Wait for initial Sync after game start
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Record hand size before DebugMake
@@ -257,11 +267,20 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
       const baseState = loadSyncGameState();
       const debugState = enableDebugMode(baseState);
 
+      // Get player info
+      const playerIds = getPlayerIds(debugState);
+      const playerId = playerIds[0];
+
+      if (!playerId) {
+        throw new Error("No player ID found");
+      }
+
+      const playerInfo = debugState.players[playerId];
+
       await client.createRoom();
       await client.loadState(debugState);
-      await client.startGame();
 
-      // Connect
+      // Connect BEFORE starting game
       wsClient = new GameWebSocketClient({
         url: `${SANDBOX_WS_URL}?roomId=99999`,
         reconnect: false,
@@ -289,20 +308,10 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
       await wsClient.connect();
       await new Promise((resolve) => setTimeout(resolve, 500));
 
-      // Get player ID and info
-      const playerIds = getPlayerIds(debugState);
-      const playerId = playerIds[0];
-
-      if (!playerId) {
-        throw new Error("No player ID found");
-      }
-
-      const playerInfo = debugState.players[playerId];
-
       // Import helpers
       const { playerEntry, debugMakeCard, unitDrive, verifyCardAddedToHand } = await import("./helpers/debug-actions.ts");
 
-      // Register as a player
+      // Register player BEFORE starting game
       console.log(`Registering player: ${playerInfo.name}`);
       playerEntry(
         wsClient,
@@ -313,7 +322,12 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
         []
       );
 
-      // Wait for initial Sync
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Start game after player registration
+      await client.startGame();
+
+      // Wait for initial Sync after game start
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       console.log("\n=== Test Flow: DebugMake → UnitDrive → Verify Effect ===");
@@ -395,11 +409,15 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
       const baseState = loadSyncGameState();
       const debugState = enableDebugMode(baseState);
 
+      // Get player info
+      const playerIds = getPlayerIds(debugState);
+      const playerId = playerIds[0];
+      const playerInfo = debugState.players[playerId];
+
       await client.createRoom();
       await client.loadState(debugState);
-      await client.startGame();
 
-      // Connect
+      // Connect BEFORE starting game
       wsClient = new GameWebSocketClient({
         url: `${SANDBOX_WS_URL}?roomId=99999`,
         reconnect: false,
@@ -419,11 +437,7 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
       await wsClient.connect();
       await new Promise((resolve) => setTimeout(resolve, 500));
 
-      // Register player
-      const playerIds = getPlayerIds(debugState);
-      const playerId = playerIds[0];
-      const playerInfo = debugState.players[playerId];
-
+      // Register player BEFORE starting game
       const { playerEntry } = await import("./helpers/debug-actions.ts");
       playerEntry(
         wsClient,
@@ -433,6 +447,11 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
         playerInfo.deck?.map((card: any) => card.catalogId) || [],
         []
       );
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Start game after player registration
+      await client.startGame();
 
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
