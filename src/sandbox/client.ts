@@ -3,118 +3,29 @@
  */
 
 import type { GameState } from "../types/game.ts";
+import {
+  parseSandboxStatus,
+  parseSandboxCreateResponse,
+  parseSandboxLoadStateResponse,
+  parseSandboxStartResponse,
+  parseSandboxDestroyResponse,
+  type SandboxStatus,
+  type SandboxCreateResponse,
+  type SandboxLoadStateResponse,
+  type SandboxStartResponse,
+  type SandboxDestroyResponse,
+} from "../schemas/index.ts";
 
-export interface SandboxStatus {
-  enabled: boolean;
-  roomId: string;
-  roomExists: boolean;
-  playerCount: number;
-}
-
-export interface SandboxCreateResponse {
-  success: boolean;
-  roomId: string;
-}
-
-export interface SandboxLoadStateResponse {
-  success: boolean;
-  message: string;
-  round: number;
-  turn: number;
-}
-
-export interface SandboxStartResponse {
-  success: boolean;
-  message: string;
-  playerCount: number;
-}
-
-export interface SandboxDestroyResponse {
-  success: boolean;
-  message: string;
-}
+export type {
+  SandboxStatus,
+  SandboxCreateResponse,
+  SandboxLoadStateResponse,
+  SandboxStartResponse,
+  SandboxDestroyResponse,
+};
 
 /** Default sandbox server URL */
 const DEFAULT_SANDBOX_URL = "http://localhost:5000";
-
-/**
- * Type guard for SandboxStatus
- */
-function isSandboxStatus(data: unknown): data is SandboxStatus {
-  if (typeof data !== "object" || data === null) return false;
-  return (
-    "enabled" in data &&
-    typeof data.enabled === "boolean" &&
-    "roomId" in data &&
-    typeof data.roomId === "string" &&
-    "roomExists" in data &&
-    typeof data.roomExists === "boolean" &&
-    "playerCount" in data &&
-    typeof data.playerCount === "number"
-  );
-}
-
-/**
- * Type guard for SandboxCreateResponse
- */
-function isSandboxCreateResponse(data: unknown): data is SandboxCreateResponse {
-  if (typeof data !== "object" || data === null) return false;
-  return (
-    "success" in data &&
-    typeof data.success === "boolean" &&
-    "roomId" in data &&
-    typeof data.roomId === "string"
-  );
-}
-
-/**
- * Type guard for SandboxLoadStateResponse
- */
-function isSandboxLoadStateResponse(
-  data: unknown
-): data is SandboxLoadStateResponse {
-  if (typeof data !== "object" || data === null) return false;
-  return (
-    "success" in data &&
-    typeof data.success === "boolean" &&
-    "message" in data &&
-    typeof data.message === "string" &&
-    "round" in data &&
-    typeof data.round === "number" &&
-    "turn" in data &&
-    typeof data.turn === "number"
-  );
-}
-
-/**
- * Type guard for SandboxStartResponse
- */
-function isSandboxStartResponse(data: unknown): data is SandboxStartResponse {
-  if (typeof data !== "object" || data === null) return false;
-  return (
-    "success" in data &&
-    typeof data.success === "boolean" &&
-    "message" in data &&
-    typeof data.message === "string" &&
-    "playerCount" in data &&
-    typeof data.playerCount === "number"
-  );
-}
-
-/**
- * Type guard for SandboxDestroyResponse
- */
-function isSandboxDestroyResponse(
-  data: unknown
-): data is SandboxDestroyResponse {
-  if (typeof data !== "object" || data === null) return false;
-  return (
-    "success" in data &&
-    typeof data.success === "boolean" &&
-    "message" in data &&
-    typeof data.message === "string"
-  );
-}
 
 /**
  * Sandbox API client for evaluating game moves
@@ -141,10 +52,7 @@ export class SandboxClient {
     }
 
     const data: unknown = await response.json();
-    if (!isSandboxStatus(data)) {
-      throw new Error("Invalid sandbox status response");
-    }
-    return data;
+    return parseSandboxStatus(data);
   }
 
   /**
@@ -165,10 +73,7 @@ export class SandboxClient {
     }
 
     const data: unknown = await response.json();
-    if (!isSandboxCreateResponse(data)) {
-      throw new Error("Invalid create room response");
-    }
-    return data;
+    return parseSandboxCreateResponse(data);
   }
 
   /**
@@ -193,10 +98,7 @@ export class SandboxClient {
     }
 
     const data: unknown = await response.json();
-    if (!isSandboxLoadStateResponse(data)) {
-      throw new Error("Invalid load state response");
-    }
-    return data;
+    return parseSandboxLoadStateResponse(data);
   }
 
   /**
@@ -217,10 +119,7 @@ export class SandboxClient {
     }
 
     const data: unknown = await response.json();
-    if (!isSandboxStartResponse(data)) {
-      throw new Error("Invalid start game response");
-    }
-    return data;
+    return parseSandboxStartResponse(data);
   }
 
   /**
@@ -241,10 +140,7 @@ export class SandboxClient {
     }
 
     const data: unknown = await response.json();
-    if (!isSandboxDestroyResponse(data)) {
-      throw new Error("Invalid destroy room response");
-    }
-    return data;
+    return parseSandboxDestroyResponse(data);
   }
 
   /**

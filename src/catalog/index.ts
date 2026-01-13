@@ -3,19 +3,12 @@
  */
 
 import catalogData from "../../suit/catalog/catalog.json";
+import {
+  isValidCatalogCard,
+  type CatalogCard,
+} from "../schemas/index.ts";
 
-export interface CatalogCard {
-  id: string;
-  name: string;
-  rarity: string;
-  cost: number;
-  color: number;
-  bp?: [number, number, number];
-  ability: string;
-  type: "unit" | "trigger" | "intercept" | "advanced_unit" | "virus" | "joker";
-  species?: string[];
-  gauge?: string;
-}
+export type { CatalogCard };
 
 /**
  * Catalog service for accessing card information
@@ -44,7 +37,7 @@ export class CatalogService {
       }
 
       for (const item of catalogData) {
-        if (!this.isValidCatalogCard(item)) {
+        if (!isValidCatalogCard(item)) {
           console.warn(`[Catalog] Skipping invalid card entry:`, item);
           continue;
         }
@@ -54,31 +47,6 @@ export class CatalogService {
     } catch (error) {
       console.error("[Catalog] Failed to load catalog data:", error);
     }
-  }
-
-  /**
-   * Validate if an item has required CatalogCard fields
-   */
-  private isValidCatalogCard(item: unknown): item is CatalogCard {
-    if (typeof item !== "object" || item === null) {
-      return false;
-    }
-    return (
-      "id" in item &&
-      typeof item.id === "string" &&
-      "name" in item &&
-      typeof item.name === "string" &&
-      "rarity" in item &&
-      typeof item.rarity === "string" &&
-      "cost" in item &&
-      typeof item.cost === "number" &&
-      "color" in item &&
-      typeof item.color === "number" &&
-      "ability" in item &&
-      typeof item.ability === "string" &&
-      "type" in item &&
-      typeof item.type === "string"
-    );
   }
 
   /**

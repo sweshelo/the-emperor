@@ -3,14 +3,7 @@
  */
 
 import type { ServerMessage, ClientMessage } from "../types/game.ts";
-
-/**
- * Type guard to check if data is a valid ServerMessage
- */
-function isServerMessage(data: unknown): data is ServerMessage {
-  if (typeof data !== "object" || data === null) return false;
-  return "action" in data && "payload" in data;
-}
+import { isServerMessage } from "../schemas/index.ts";
 
 export type MessageHandler = (message: ServerMessage) => void;
 export type ErrorHandler = (error: Error) => void;

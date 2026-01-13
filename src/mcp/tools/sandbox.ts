@@ -3,78 +3,56 @@
  */
 
 import type { ToolDefinition } from "../types/index.ts";
+import type { GameState } from "../../types/game.ts";
 import { SandboxClient } from "../../sandbox/client.ts";
 import { gameStateManager } from "../../game/state.ts";
+import {
+  parseBoolean,
+  parseString,
+  parseOptionalObject,
+  isPlainObject,
+} from "../../schemas/index.ts";
 
 /**
- * Type-safe getter for boolean arguments
+ * Merge modifications into a GameState object
+ * This creates a new GameState with the modifications applied
  */
-function getBoolean(args: Record<string, unknown>, key: string): boolean {
-  const value = args[key];
-  if (typeof value !== "boolean") {
-    throw new Error(`Expected ${key} to be a boolean`);
-  }
-  return value;
-}
+function mergeGameStateModifications(
+  state: GameState,
+  modifications: Record<string, unknown>
+): GameState {
+  // Create a deep copy and merge modifications
+  // We know the structure is valid because we start with a valid GameState
+  // and only merge compatible modifications
+  const gameMods = isPlainObject(modifications.game) ? modifications.game : {};
+  const merged: GameState = {
+    rule: state.rule,
+    game: {
+      round: state.game.round,
+      turn: state.game.turn,
+      ...gameMods,
+    },
+    players: { ...state.players },
+  };
 
-/**
- * Type-safe getter for string arguments
- */
-function getString(args: Record<string, unknown>, key: string): string {
-  const value = args[key];
-  if (typeof value !== "string") {
-    throw new Error(`Expected ${key} to be a string`);
-  }
-  return value;
-}
-
-/**
- * Type guard to check if a value is a plain object
- */
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return (
-    value !== null && typeof value === "object" && !Array.isArray(value)
-  );
-}
-
-/**
- * Type-safe getter for optional object arguments
- */
-function getOptionalObject(
-  args: Record<string, unknown>,
-  key: string
-): Record<string, unknown> | undefined {
-  const value = args[key];
-  if (value === undefined || value === null) return undefined;
-  if (!isPlainObject(value)) {
-    throw new Error(`Expected ${key} to be an object`);
-  }
-  return value;
-}
-
-/**
- * Deep merge two objects, recursively merging nested objects
- */
-function deepMerge(
-  target: Record<string, unknown>,
-  source: Record<string, unknown>
-): Record<string, unknown> {
-  const result: Record<string, unknown> = { ...target };
-
-  for (const key in source) {
-    if (Object.prototype.hasOwnProperty.call(source, key)) {
-      const sourceValue = source[key];
-      const targetValue = result[key];
-
-      if (isPlainObject(sourceValue) && isPlainObject(targetValue)) {
-        result[key] = deepMerge(targetValue, sourceValue);
-      } else {
-        result[key] = sourceValue;
+  // Apply player-level modifications if present
+  if (isPlainObject(modifications.players)) {
+    for (const [playerId, playerMods] of Object.entries(modifications.players)) {
+      if (isPlainObject(playerMods) && merged.players[playerId]) {
+        merged.players[playerId] = {
+          ...merged.players[playerId],
+          ...playerMods,
+        };
       }
     }
   }
 
-  return result;
+  // Apply rule modifications if present
+  if (isPlainObject(modifications.rule)) {
+    merged.rule = { ...state.rule, ...modifications.rule };
+  }
+
+  return merged;
 }
 
 // Sandbox client instance (will be set externally)
@@ -200,9 +178,9 @@ export const loadSandboxStateTool: ToolDefinition = {
   },
   handler: async (args) => {
     const client = ensureSandboxClient();
-    const useCurrentState = getBoolean(args, "useCurrentState");
+    const useCurrentState = parseBoolean(args, "useCurrentState");
 
-    let state: Record<string, unknown>;
+    let state: GameState | Record<string, unknown>;
     if (useCurrentState) {
       const currentState = gameStateManager.getState();
       if (!currentState) {
@@ -218,7 +196,7 @@ export const loadSandboxStateTool: ToolDefinition = {
       }
       state = currentState;
     } else {
-      const customState = getOptionalObject(args, "customState");
+      const customState = parseOptionalObject(args, "customState");
       if (!customState) {
         return {
           content: [
@@ -362,8 +340,8 @@ export const evaluateMoveTool: ToolDefinition = {
   },
   handler: async (args) => {
     const client = ensureSandboxClient();
-    const moveDescription = getString(args, "moveDescription");
-    const stateModifications = getOptionalObject(args, "stateModifications");
+    const moveDescription = parseString(args, "moveDescription");
+    const stateModifications = parseOptionalObject(args, "stateModifications");
 
     console.log(`[Sandbox] Evaluating move: ${moveDescription}`);
 
@@ -382,14 +360,12 @@ export const evaluateMoveTool: ToolDefinition = {
         };
       }
 
-      // Apply modifications if provided (deep merge to preserve nested structures)
-      let testState: Record<string, unknown> = currentState;
-      if (stateModifications) {
-        testState = deepMerge(currentState, stateModifications);
-      }
-
-      // Setup sandbox
-      const result = await client.setupAndRun(testState);
+      // Setup sandbox - use current state directly or merge modifications
+      const result = stateModifications
+        ? await client.setupAndRun(
+            mergeGameStateModifications(currentState, stateModifications)
+          )
+        : await client.setupAndRun(currentState);
 
       return {
         content: [

@@ -3,63 +3,31 @@
  */
 
 import type { ToolDefinition } from "../types/index.ts";
-import type { ClientAction } from "../../types/game.ts";
+import type { ClientPayload } from "../../types/game.ts";
+import {
+  parseString,
+  parseBoolean,
+  parseOptionalStringArray,
+} from "../../schemas/index.ts";
 
 // This will be injected by the MCP server
-let sendAction: ((action: ClientAction) => void) | null = null;
+let sendAction: ((action: ClientPayload) => void) | null = null;
 
 /**
  * Set the action sender function
  */
-export function setActionSender(sender: (action: ClientAction) => void): void {
+export function setActionSender(sender: (action: ClientPayload) => void): void {
   sendAction = sender;
 }
 
 /**
  * Helper to ensure action sender is available
  */
-function ensureActionSender(): (action: ClientAction) => void {
+function ensureActionSender(): (action: ClientPayload) => void {
   if (!sendAction) {
     throw new Error("Action sender not initialized");
   }
   return sendAction;
-}
-
-/**
- * Type-safe getter for string arguments
- */
-function getString(args: Record<string, unknown>, key: string): string {
-  const value = args[key];
-  if (typeof value !== "string") {
-    throw new Error(`Expected ${key} to be a string`);
-  }
-  return value;
-}
-
-/**
- * Type-safe getter for boolean arguments
- */
-function getBoolean(args: Record<string, unknown>, key: string): boolean {
-  const value = args[key];
-  if (typeof value !== "boolean") {
-    throw new Error(`Expected ${key} to be a boolean`);
-  }
-  return value;
-}
-
-/**
- * Type-safe getter for optional string array arguments
- */
-function getOptionalStringArray(
-  args: Record<string, unknown>,
-  key: string
-): string[] | undefined {
-  const value = args[key];
-  if (value === undefined || value === null) return undefined;
-  if (!Array.isArray(value) || !value.every((v) => typeof v === "string")) {
-    throw new Error(`Expected ${key} to be a string array`);
-  }
-  return value;
 }
 
 /**
@@ -84,9 +52,9 @@ export const summonUnitTool: ToolDefinition = {
   },
   handler: async (args) => {
     const sender = ensureActionSender();
-    const playerId = getString(args, "playerId");
-    const cardId = getString(args, "cardId");
-    const action: ClientAction = {
+    const playerId = parseString(args, "playerId");
+    const cardId = parseString(args, "cardId");
+    const action: ClientPayload = {
       type: "UnitDrive",
       player: playerId,
       target: { id: cardId },
@@ -131,10 +99,10 @@ export const evolveUnitTool: ToolDefinition = {
   },
   handler: async (args) => {
     const sender = ensureActionSender();
-    const playerId = getString(args, "playerId");
-    const evolutionCardId = getString(args, "evolutionCardId");
-    const baseUnitId = getString(args, "baseUnitId");
-    const action: ClientAction = {
+    const playerId = parseString(args, "playerId");
+    const evolutionCardId = parseString(args, "evolutionCardId");
+    const baseUnitId = parseString(args, "baseUnitId");
+    const action: ClientPayload = {
       type: "EvolveDrive",
       player: playerId,
       target: { id: evolutionCardId },
@@ -176,9 +144,9 @@ export const useJokerTool: ToolDefinition = {
   },
   handler: async (args) => {
     const sender = ensureActionSender();
-    const playerId = getString(args, "playerId");
-    const jokerId = getString(args, "jokerId");
-    const action: ClientAction = {
+    const playerId = parseString(args, "playerId");
+    const jokerId = parseString(args, "jokerId");
+    const action: ClientPayload = {
       type: "JokerDrive",
       player: playerId,
       target: { id: jokerId },
@@ -223,10 +191,10 @@ export const setTriggerTool: ToolDefinition = {
   },
   handler: async (args) => {
     const sender = ensureActionSender();
-    const playerId = getString(args, "playerId");
-    const cardId = getString(args, "cardId");
-    const catalogId = getString(args, "catalogId");
-    const action: ClientAction = {
+    const playerId = parseString(args, "playerId");
+    const cardId = parseString(args, "cardId");
+    const catalogId = parseString(args, "catalogId");
+    const action: ClientPayload = {
       type: "TriggerSet",
       player: playerId,
       target: {
@@ -270,9 +238,9 @@ export const attackTool: ToolDefinition = {
   },
   handler: async (args) => {
     const sender = ensureActionSender();
-    const playerId = getString(args, "playerId");
-    const unitId = getString(args, "unitId");
-    const action: ClientAction = {
+    const playerId = parseString(args, "playerId");
+    const unitId = parseString(args, "unitId");
+    const action: ClientPayload = {
       type: "Attack",
       player: playerId,
       target: { id: unitId },
@@ -313,9 +281,9 @@ export const useBootAbilityTool: ToolDefinition = {
   },
   handler: async (args) => {
     const sender = ensureActionSender();
-    const playerId = getString(args, "playerId");
-    const unitId = getString(args, "unitId");
-    const action: ClientAction = {
+    const playerId = parseString(args, "playerId");
+    const unitId = parseString(args, "unitId");
+    const action: ClientPayload = {
       type: "Boot",
       player: playerId,
       target: { id: unitId },
@@ -356,9 +324,9 @@ export const withdrawUnitTool: ToolDefinition = {
   },
   handler: async (args) => {
     const sender = ensureActionSender();
-    const playerId = getString(args, "playerId");
-    const unitId = getString(args, "unitId");
-    const action: ClientAction = {
+    const playerId = parseString(args, "playerId");
+    const unitId = parseString(args, "unitId");
+    const action: ClientPayload = {
       type: "Withdrawal",
       player: playerId,
       target: { id: unitId },
@@ -404,9 +372,9 @@ export const respondToChoiceTool: ToolDefinition = {
   },
   handler: async (args) => {
     const sender = ensureActionSender();
-    const promptId = getString(args, "promptId");
-    const choiceIds = getOptionalStringArray(args, "choiceIds") || [];
-    const action: ClientAction = {
+    const promptId = parseString(args, "promptId");
+    const choiceIds = parseOptionalStringArray(args, "choiceIds") || [];
+    const action: ClientPayload = {
       type: "Choose",
       promptId: promptId,
       choice: choiceIds.length > 0 ? choiceIds : undefined,
@@ -450,9 +418,9 @@ export const endTurnTool: ToolDefinition = {
   },
   handler: async (args) => {
     const sender = ensureActionSender();
-    const promptId = getString(args, "promptId");
-    const playerId = getString(args, "playerId");
-    const action: ClientAction = {
+    const promptId = parseString(args, "promptId");
+    const playerId = parseString(args, "playerId");
+    const action: ClientPayload = {
       type: "Continue",
       promptId: promptId,
       player: playerId,
@@ -493,9 +461,9 @@ export const mulliganTool: ToolDefinition = {
   },
   handler: async (args) => {
     const sender = ensureActionSender();
-    const playerId = getString(args, "playerId");
-    const keep = getBoolean(args, "keep");
-    const action: ClientAction = {
+    const playerId = parseString(args, "playerId");
+    const keep = parseBoolean(args, "keep");
+    const action: ClientPayload = {
       type: "Mulligan",
       action: keep ? "done" : "retry",
       player: playerId,
