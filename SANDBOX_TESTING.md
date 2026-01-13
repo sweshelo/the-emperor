@@ -72,7 +72,7 @@ TEST_SANDBOX_URL=http://localhost:3000 TEST_SANDBOX_WS_URL=ws://localhost:3000 b
 TEST_SANDBOX_URL=http://localhost:3000 TEST_SANDBOX_WS_URL=ws://localhost:3000 bun test tests/sandbox-*.test.ts
 ```
 
-### 2. MCPサーバーとの統合テスト
+### 5. MCPサーバーとの統合テスト
 
 #### 手順 1: the-foolサーバーを起動
 
