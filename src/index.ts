@@ -8,7 +8,22 @@ import { ClaudeAgent } from "./agent/claude.ts";
 import { BuddyAgent } from "./agent/buddy.ts";
 import { GameController } from "./game/controller.ts";
 import { catalogService } from "./catalog/index.ts";
+import { selectMode, waitForJoinCommand, closeReadline } from "./cli/index.ts";
 import type { AgentMode, Agent } from "./types/agent.ts";
+
+/**
+ * Default deck configuration
+ * Based on the-magician's STARTER_DECK
+ */
+const DEFAULT_DECK = [
+  "1-2-001", "1-2-001", "1-2-003", "1-2-003", "1-2-004", "1-2-004",
+  "1-2-007", "1-2-007", "1-2-101", "1-2-101", "1-2-104", "1-2-104",
+  "1-2-106", "1-2-106", "PR-028", "PR-028", "1-2-043", "1-2-043",
+  "1-2-049", "1-2-049", "1-2-051", "1-2-051", "1-2-124", "PR-016",
+  "PR-016", "PR-031", "PR-031", "1-2-122", "1-2-122", "1-2-057",
+  "1-2-057", "PR-032", "1-2-078", "1-2-141", "PR-067", "1-2-099",
+  "1-2-099", "1-2-148", "1-2-071", "1-2-071",
+];
 
 /**
  * Configuration from environment variables
@@ -19,31 +34,14 @@ interface Config {
   playerId: string;
   playerName: string;
   model?: string;
-  mode: AgentMode;
-}
-
-/**
- * Validate and return agent mode from string
- */
-function parseAgentMode(value: string | undefined): AgentMode {
-  if (value === "buddy") {
-    return "buddy";
-  }
-  return "autonomous";
+  deck: string[];
 }
 
 /**
  * Load configuration from environment
  */
 function loadConfig(): Config {
-  const mode = parseAgentMode(process.env.AGENT_MODE);
-
-  // API key is only required for autonomous mode
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (mode === "autonomous" && !apiKey) {
-    throw new Error("ANTHROPIC_API_KEY environment variable is required for autonomous mode");
-  }
-
   const serverUrl = process.env.GAME_SERVER_URL ?? "ws://localhost:3000";
   const playerId = process.env.PLAYER_ID ?? `emperor-${Date.now()}`;
   const playerName = process.env.PLAYER_NAME ?? "The Emperor";
@@ -55,15 +53,19 @@ function loadConfig(): Config {
     playerId,
     playerName,
     model,
-    mode,
+    deck: DEFAULT_DECK,
   };
 }
 
 /**
  * Create agent based on mode
  */
-function createAgent(config: Config, catalogLookup: (id: string) => ReturnType<typeof catalogService.getCard>): Agent {
-  if (config.mode === "buddy") {
+function createAgent(
+  mode: AgentMode,
+  config: Config,
+  catalogLookup: (id: string) => ReturnType<typeof catalogService.getCard>
+): Agent {
+  if (mode === "buddy") {
     console.log("Mode: BUDDY (Interactive)");
     console.log("  You control the agent via command line input");
     return new BuddyAgent(config.playerName, catalogLookup);
@@ -74,7 +76,7 @@ function createAgent(config: Config, catalogLookup: (id: string) => ReturnType<t
   console.log(`  Model: ${config.model ?? "claude-sonnet-4-20250514 (default)"}`);
 
   if (!config.apiKey) {
-    throw new Error("API key required for autonomous mode");
+    throw new Error("ANTHROPIC_API_KEY environment variable is required for autonomous mode");
   }
 
   return new ClaudeAgent(
@@ -104,6 +106,9 @@ async function main() {
   console.log(`Player ID: ${config.playerId}`);
   console.log(`Player Name: ${config.playerName}`);
   console.log(`Server URL: ${config.serverUrl}`);
+
+  // Interactive mode selection
+  const mode = await selectMode();
   console.log("");
 
   // Create catalog lookup function
@@ -112,20 +117,28 @@ async function main() {
   // Create agent based on mode
   let agent: Agent;
   try {
-    agent = createAgent(config, catalogLookup);
+    agent = createAgent(mode, config, catalogLookup);
   } catch (error) {
     console.error("Failed to create agent:", error);
+    closeReadline();
     process.exit(1);
   }
 
   console.log("");
 
-  // Create game controller
+  // Wait for /join command
+  const joinResult = await waitForJoinCommand();
+  console.log(`Joining room: ${joinResult.roomId}`);
+  console.log("");
+
+  // Create game controller with room ID
   const controller = new GameController(
     {
       serverUrl: config.serverUrl,
+      roomId: joinResult.roomId,
       playerId: config.playerId,
       playerName: config.playerName,
+      deck: config.deck,
     },
     agent
   );
@@ -137,6 +150,7 @@ async function main() {
       agent.clearHistory();
     }
     controller.stop();
+    closeReadline();
     process.exit(0);
   };
 
@@ -155,6 +169,7 @@ async function main() {
     });
   } catch (error) {
     console.error("Failed to start:", error);
+    closeReadline();
     process.exit(1);
   }
 }
