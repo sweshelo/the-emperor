@@ -9,9 +9,8 @@ import type { GameState } from "../src/types/game.ts";
 import type { ServerMessage } from "../src/types/game.ts";
 import { loadSyncGameState, getPlayerIds } from "./helpers/data-loader.ts";
 
-// Test configuration
-const SANDBOX_BASE_URL = process.env.TEST_SANDBOX_URL || "http://localhost:3000";
-const SANDBOX_WS_URL = process.env.TEST_SANDBOX_WS_URL || "ws://localhost:3000";
+// Test configuration - uses SANDBOX_URL env var with fallback
+const SANDBOX_WS_URL = process.env.SANDBOX_WS_URL || "ws://localhost:5000";
 
 // Test card: ブロックナイト (1-1-018)
 // Effect: When this unit enters the field, add 1 random green unit card to hand
@@ -25,7 +24,8 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
   let receivedMessages: ServerMessage[] = [];
 
   beforeAll(() => {
-    client = new SandboxClient(SANDBOX_BASE_URL);
+    // SandboxClient uses SANDBOX_URL env var with fallback to localhost:5000
+    client = new SandboxClient();
   });
 
   afterEach(async () => {
