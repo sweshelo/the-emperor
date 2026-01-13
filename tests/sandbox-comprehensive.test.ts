@@ -179,6 +179,10 @@ describe("Sandbox Comprehensive Tests", () => {
 
       const playerInfo = gameState.players[playerId];
 
+      if (!playerInfo) {
+        throw new Error(`Player ${playerId} not found in game state`);
+      }
+
       // Setup sandbox
       await client.createRoom();
       await client.loadState(gameState);
@@ -257,7 +261,8 @@ describe("Sandbox Comprehensive Tests", () => {
       const messages: any[] = [];
       wsClient.onMessage((message) => {
         messages.push(message);
-        console.log(`  Received: ${message.type}`);
+        const msgType = message.payload?.type ?? "unknown";
+        console.log(`  Received: ${msgType}`);
       });
 
       await wsClient.connect();

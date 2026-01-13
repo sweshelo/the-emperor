@@ -3,7 +3,7 @@
  */
 
 import type { ToolDefinition } from "../types/index.ts";
-import type { ClientPayload } from "../../types/game.ts";
+import type { McpClientPayload } from "../../types/game.ts";
 import {
   parseString,
   parseBoolean,
@@ -11,19 +11,19 @@ import {
 } from "../../schemas/index.ts";
 
 // This will be injected by the MCP server
-let sendAction: ((action: ClientPayload) => void) | null = null;
+let sendAction: ((action: McpClientPayload) => void) | null = null;
 
 /**
  * Set the action sender function
  */
-export function setActionSender(sender: (action: ClientPayload) => void): void {
+export function setActionSender(sender: (action: McpClientPayload) => void): void {
   sendAction = sender;
 }
 
 /**
  * Helper to ensure action sender is available
  */
-function ensureActionSender(): (action: ClientPayload) => void {
+function ensureActionSender(): (action: McpClientPayload) => void {
   if (!sendAction) {
     throw new Error("Action sender not initialized");
   }
@@ -54,7 +54,7 @@ export const summonUnitTool: ToolDefinition = {
     const sender = ensureActionSender();
     const playerId = parseString(args, "playerId");
     const cardId = parseString(args, "cardId");
-    const action: ClientPayload = {
+    const action: McpClientPayload = {
       type: "UnitDrive",
       player: playerId,
       target: { id: cardId },
@@ -102,7 +102,7 @@ export const evolveUnitTool: ToolDefinition = {
     const playerId = parseString(args, "playerId");
     const evolutionCardId = parseString(args, "evolutionCardId");
     const baseUnitId = parseString(args, "baseUnitId");
-    const action: ClientPayload = {
+    const action: McpClientPayload = {
       type: "EvolveDrive",
       player: playerId,
       target: { id: evolutionCardId },
@@ -146,7 +146,7 @@ export const useJokerTool: ToolDefinition = {
     const sender = ensureActionSender();
     const playerId = parseString(args, "playerId");
     const jokerId = parseString(args, "jokerId");
-    const action: ClientPayload = {
+    const action: McpClientPayload = {
       type: "JokerDrive",
       player: playerId,
       target: { id: jokerId },
@@ -194,7 +194,7 @@ export const setTriggerTool: ToolDefinition = {
     const playerId = parseString(args, "playerId");
     const cardId = parseString(args, "cardId");
     const catalogId = parseString(args, "catalogId");
-    const action: ClientPayload = {
+    const action: McpClientPayload = {
       type: "TriggerSet",
       player: playerId,
       target: {
@@ -240,7 +240,7 @@ export const attackTool: ToolDefinition = {
     const sender = ensureActionSender();
     const playerId = parseString(args, "playerId");
     const unitId = parseString(args, "unitId");
-    const action: ClientPayload = {
+    const action: McpClientPayload = {
       type: "Attack",
       player: playerId,
       target: { id: unitId },
@@ -283,7 +283,7 @@ export const useBootAbilityTool: ToolDefinition = {
     const sender = ensureActionSender();
     const playerId = parseString(args, "playerId");
     const unitId = parseString(args, "unitId");
-    const action: ClientPayload = {
+    const action: McpClientPayload = {
       type: "Boot",
       player: playerId,
       target: { id: unitId },
@@ -326,7 +326,7 @@ export const withdrawUnitTool: ToolDefinition = {
     const sender = ensureActionSender();
     const playerId = parseString(args, "playerId");
     const unitId = parseString(args, "unitId");
-    const action: ClientPayload = {
+    const action: McpClientPayload = {
       type: "Withdrawal",
       player: playerId,
       target: { id: unitId },
@@ -374,7 +374,7 @@ export const respondToChoiceTool: ToolDefinition = {
     const sender = ensureActionSender();
     const promptId = parseString(args, "promptId");
     const choiceIds = parseOptionalStringArray(args, "choiceIds") || [];
-    const action: ClientPayload = {
+    const action: McpClientPayload = {
       type: "Choose",
       promptId: promptId,
       choice: choiceIds.length > 0 ? choiceIds : undefined,
@@ -420,7 +420,7 @@ export const endTurnTool: ToolDefinition = {
     const sender = ensureActionSender();
     const promptId = parseString(args, "promptId");
     const playerId = parseString(args, "playerId");
-    const action: ClientPayload = {
+    const action: McpClientPayload = {
       type: "Continue",
       promptId: promptId,
       player: playerId,
@@ -463,7 +463,7 @@ export const mulliganTool: ToolDefinition = {
     const sender = ensureActionSender();
     const playerId = parseString(args, "playerId");
     const keep = parseBoolean(args, "keep");
-    const action: ClientPayload = {
+    const action: McpClientPayload = {
       type: "Mulligan",
       action: keep ? "done" : "retry",
       player: playerId,

@@ -108,7 +108,7 @@ export function parseSandboxDestroyResponse(data: unknown): SandboxDestroyRespon
 // ============================================
 
 // Import the actual ServerMessage type for the type guard
-import type { ServerMessage } from "../types/game.ts";
+import type { ServerMessage, GameState, ChoicesMessage } from "../types/game.ts";
 
 /**
  * Type guard to check if data has the shape of a ServerMessage
@@ -117,4 +117,70 @@ import type { ServerMessage } from "../types/game.ts";
 export function isServerMessage(data: unknown): data is ServerMessage {
   if (typeof data !== "object" || data === null) return false;
   return "action" in data && "payload" in data;
+}
+
+// ============================================
+// Server message payload schemas
+// ============================================
+
+/**
+ * Schema for GameState (Sync payload body)
+ * Validates minimum required structure - actual GameState has more properties
+ */
+export const gameStateSchema = z.object({
+  rule: z.object({}).passthrough(),
+  game: z.object({
+    round: z.number(),
+    turn: z.number(),
+  }).passthrough(),
+  players: z.record(z.string(), z.object({}).passthrough()),
+});
+
+/**
+ * Type guard for GameState
+ * Uses zod schema to validate, then narrows the type
+ */
+export function isValidGameState(data: unknown): data is GameState {
+  return gameStateSchema.safeParse(data).success;
+}
+
+/**
+ * Parse and validate GameState from Sync payload body
+ * Returns the data if valid, null otherwise
+ */
+export function parseGameState(data: unknown): GameState | null {
+  if (isValidGameState(data)) {
+    return data;
+  }
+  return null;
+}
+
+/**
+ * Schema for Choices payload
+ */
+export const choicesPayloadSchema = z.object({
+  title: z.string(),
+  isCancelable: z.boolean().optional(),
+  type: z.enum(["card", "option", "intercept", "unit", "block"]),
+  items: z.array(z.object({}).passthrough()),
+  count: z.number().optional(),
+});
+
+/**
+ * Type guard for Choices
+ * Uses zod schema to validate, then narrows the type
+ */
+export function isValidChoices(data: unknown): data is ChoicesMessage["choices"] {
+  return choicesPayloadSchema.safeParse(data).success;
+}
+
+/**
+ * Parse and validate Choices from payload
+ * Returns the data if valid, null otherwise
+ */
+export function parseChoices(data: unknown): ChoicesMessage["choices"] | null {
+  if (isValidChoices(data)) {
+    return data;
+  }
+  return null;
 }

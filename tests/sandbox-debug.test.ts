@@ -136,7 +136,16 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
       // Get player info
       const playerIds = getPlayerIds(debugState);
       const playerId = playerIds[0];
+
+      if (!playerId) {
+        throw new Error("No player ID found");
+      }
+
       const playerInfo = debugState.players[playerId];
+
+      if (!playerInfo) {
+        throw new Error(`Player ${playerId} not found`);
+      }
 
       await client.createRoom();
       await client.loadState(debugState);
@@ -209,6 +218,11 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
       }
 
       const playerInfo = debugState.players[playerId];
+
+      if (!playerInfo) {
+        throw new Error(`Player ${playerId} not found`);
+      }
+
       console.log(`Player: ${playerInfo.name} (${playerId})`);
 
       await client.createRoom();
@@ -225,7 +239,8 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
 
       wsClient.onMessage((message) => {
         receivedMessages.push(message);
-        console.log(`  Received: ${message.payload?.type || message.type}`);
+        const msgType = message.payload?.type ?? "unknown";
+        console.log(`  Received: ${msgType}`);
 
         if (message.payload?.type === "Sync") {
           syncMessages.push(message);
@@ -244,9 +259,9 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
         wsClient,
         "99999", // Sandbox room ID
         playerId,
-        playerInfo.name,
+        playerInfo?.name ?? "Unknown",
         // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-assertions
-        (playerInfo as any).library || [],
+        (playerInfo as any)?.library || [],
         []
       );
 
@@ -302,6 +317,10 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
 
       const playerInfo = debugState.players[playerId];
 
+      if (!playerInfo) {
+        throw new Error(`Player ${playerId} not found`);
+      }
+
       await client.createRoom();
       await client.loadState(debugState);
 
@@ -323,8 +342,9 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
 
           if (players) {
             const syncPlayerIds = Object.keys(players);
-            if (syncPlayerIds.length > 0) {
-              const player = players[syncPlayerIds[0]];
+            const firstPlayerId = syncPlayerIds[0];
+            if (firstPlayerId) {
+              const player = players[firstPlayerId];
               console.log(`  Hand: ${player?.hand?.length}, Field: ${player?.field?.length}`);
             }
           }
@@ -402,7 +422,7 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
       if (!promptId) {
         throw new Error("No promptId in DisplayEffect message");
       }
-      sendContinue(wsClient, promptId);
+      sendContinue(wsClient, promptId, playerId);
       console.log(`  ✓ Continue sent for promptId: ${promptId}`);
 
       // Wait for the Sync message after DisplayEffect (effect applied)
@@ -494,7 +514,16 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
       // Get player info
       const playerIds = getPlayerIds(debugState);
       const playerId = playerIds[0];
+
+      if (!playerId) {
+        throw new Error("No player ID found");
+      }
+
       const playerInfo = debugState.players[playerId];
+
+      if (!playerInfo) {
+        throw new Error(`Player ${playerId} not found`);
+      }
 
       await client.createRoom();
       await client.loadState(debugState);

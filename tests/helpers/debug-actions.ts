@@ -3,7 +3,13 @@
  */
 
 import type { GameWebSocketClient } from "../../src/websocket/client.ts";
-import type { ClientMessage } from "../../src/types/game.ts";
+import type {
+  ContinuePayload,
+  PlayerEntryPayload,
+  DebugMakePayload,
+  UnitDrivePayload,
+} from "../../suit/types/message/payload/index.ts";
+import type { Message } from "../../suit/types/message/message.ts";
 
 /**
  * Send Continue message to acknowledge DisplayEffect
@@ -11,16 +17,18 @@ import type { ClientMessage } from "../../src/types/game.ts";
  *
  * @param wsClient WebSocket client
  * @param promptId The prompt ID from the DisplayEffect message
+ * @param playerId The player ID sending the continue
  */
 export function sendContinue(
   wsClient: GameWebSocketClient,
-  promptId: string
+  promptId: string,
+  playerId: string
 ): void {
   if (!wsClient.isConnected()) {
     throw new Error("WebSocket is not connected");
   }
 
-  const message: ClientMessage = {
+  const message = {
     action: {
       type: "continue",
       handler: "core",
@@ -28,8 +36,9 @@ export function sendContinue(
     payload: {
       type: "Continue",
       promptId,
+      player: playerId,
     },
-  };
+  } satisfies Message<ContinuePayload>;
 
   try {
     wsClient.send(message);
@@ -69,7 +78,7 @@ export function playerEntry(
       return;
     }
 
-    const message: ClientMessage = {
+    const message = {
       action: {
         type: "join",
         handler: "room",
@@ -84,7 +93,7 @@ export function playerEntry(
         },
         jokersOwned,
       },
-    };
+    } satisfies Message<PlayerEntryPayload>;
 
     // Set up listener for Sync message (confirms registration)
     let syncReceived = false;
@@ -136,17 +145,17 @@ export function debugMakeCard(
     throw new Error("WebSocket is not connected");
   }
 
-  const message: ClientMessage = {
+  const message = {
     action: {
       type: "debug",
-      handler: "core", // handler is required for proper message routing
+      handler: "core",
     },
     payload: {
       type: "DebugMake",
       player: playerId,
       catalogId,
     },
-  };
+  } satisfies Message<DebugMakePayload>;
 
   try {
     wsClient.send(message);
@@ -173,7 +182,7 @@ export function unitDrive(
     throw new Error("WebSocket is not connected");
   }
 
-  const message: ClientMessage = {
+  const message = {
     action: {
       type: "game",
       handler: "core",
@@ -183,7 +192,7 @@ export function unitDrive(
       player: playerId,
       target: { id: cardId },
     },
-  };
+  } satisfies Message<UnitDrivePayload>;
 
   try {
     wsClient.send(message);
@@ -203,8 +212,9 @@ export function unitDrive(
  * @returns The matched message
  */
 export async function waitForMessage(
-   
-  messages: unknown[],
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  messages: any[],
   messageType: string,
   timeout: number = 5000
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -231,8 +241,9 @@ export async function waitForMessage(
  * @returns The matched DisplayEffect message
  */
 export async function waitForDisplayEffect(
-   
-  messages: unknown[],
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  messages: any[],
   effectTitle: string,
   timeout: number = 5000
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -241,7 +252,8 @@ export async function waitForDisplayEffect(
 
   while (Date.now() - startTime < timeout) {
     const message = messages.find(
-      (m) => m.payload?.type === "DisplayEffect" && m.payload?.title === effectTitle
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (m: any) => m.payload?.type === "DisplayEffect" && m.payload?.title === effectTitle
     );
     if (message) {
       return message;
@@ -261,8 +273,9 @@ export async function waitForDisplayEffect(
  * @returns The Defrost message
  */
 export async function waitForDefrost(
-   
-  messages: unknown[],
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  messages: any[],
   afterIndex: number = 0,
   timeout: number = 5000
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -290,8 +303,9 @@ export async function waitForDefrost(
  * @returns The next Sync message
  */
 export async function waitForNextSync(
-   
-  messages: unknown[],
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  messages: any[],
   afterIndex: number,
   timeout: number = 5000
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -431,7 +445,7 @@ export function verifyCardAddedToHand(
 
   // Check color if specified
   if (expectedColor !== undefined) {
-     
+
     const hasCorrectColor = addedCards.some(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (card: any) => card.catalogId && card.color === expectedColor
