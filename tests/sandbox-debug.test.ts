@@ -135,7 +135,7 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
         "99999",
         playerId,
         playerInfo.name,
-        playerInfo.deck?.map((card: any) => card.catalogId) || [],
+        (playerInfo as any).library || [],
         []
       );
 
@@ -211,17 +211,14 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
 
       // Register as a player in the room BEFORE starting the game
       console.log("Registering player...");
-      playerEntry(
+      await playerEntry(
         wsClient,
         "99999", // Sandbox room ID
         playerId,
         playerInfo.name,
-        playerInfo.deck?.map((card: any) => card.catalogId) || [],
+        (playerInfo as any).library || [],
         []
       );
-
-      // Wait for player registration to complete
-      await new Promise((resolve) => setTimeout(resolve, 500));
 
       // NOW start the game (after player is registered)
       await client.startGame();
@@ -294,9 +291,9 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
           const players = message.payload?.body?.players;
 
           if (players) {
-            const playerIds = Object.keys(players);
-            if (playerIds.length > 0) {
-              const player = players[playerIds[0]];
+            const syncPlayerIds = Object.keys(players);
+            if (syncPlayerIds.length > 0) {
+              const player = players[syncPlayerIds[0]];
               console.log(`  Hand: ${player?.hand?.length}, Field: ${player?.field?.length}`);
             }
           }
@@ -311,16 +308,14 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
 
       // Register player BEFORE starting game
       console.log(`Registering player: ${playerInfo.name}`);
-      playerEntry(
+      await playerEntry(
         wsClient,
         "99999",
         playerId,
         playerInfo.name,
-        playerInfo.deck?.map((card: any) => card.catalogId) || [],
+        (playerInfo as any).library || [],
         []
       );
-
-      await new Promise((resolve) => setTimeout(resolve, 500));
 
       // Start game after player registration
       await client.startGame();
@@ -442,7 +437,7 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
         "99999",
         playerId,
         playerInfo.name,
-        playerInfo.deck?.map((card: any) => card.catalogId) || [],
+        (playerInfo as any).library || [],
         []
       );
 

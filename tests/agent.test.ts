@@ -9,6 +9,6 @@ describe("BaseAgent", () => {
 
   test("should throw error when decideAction is not implemented", async () => {
     const agent = new BaseAgent("TestAgent");
-    expect(agent.decideAction({})).rejects.toThrow("Not implemented");
+    await expect(agent.decideAction({})).rejects.toThrow("Not implemented");
   });
 });
