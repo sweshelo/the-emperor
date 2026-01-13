@@ -109,7 +109,13 @@ the-emperor/
 ├── the-magician/            # Submodule: WebSocket client reference
 ├── tests/                   # Test files
 │   ├── agent.test.ts        # Agent tests
-│   └── sandbox-integration.test.ts # Sandbox integration tests
+│   ├── sandbox-integration.test.ts # Basic sandbox tests
+│   ├── sandbox-comprehensive.test.ts # Comprehensive sandbox tests
+│   └── helpers/             # Test helper utilities
+│       └── data-loader.ts   # Game state data loading helpers
+├── data/                    # Test data
+│   └── payload/
+│       └── sync.json        # Real game sync data sample
 ├── SANDBOX_TESTING.md       # Sandbox testing guide
 ├── package.json
 └── tsconfig.json

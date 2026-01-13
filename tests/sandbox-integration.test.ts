@@ -70,7 +70,7 @@ describe("Sandbox Integration Tests", () => {
       await client.createRoom();
 
       // Sample game state
-      const sampleState = {
+      const sampleState: any = {
         game: {
           round: 1,
           turn: 1,
@@ -136,7 +136,7 @@ describe("Sandbox Integration Tests", () => {
         return;
       }
 
-      const sampleState = {
+      const sampleState: any = {
         game: {
           round: 3,
           turn: 5,

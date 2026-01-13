@@ -20,7 +20,7 @@ bun install
 
 ## テスト実行
 
-### 1. 自動統合テスト
+### 1. 基本的な統合テスト
 
 ```bash
 # サンドボックスサーバーが起動していることを確認
@@ -33,6 +33,29 @@ TEST_SANDBOX_URL=http://localhost:3000 bun test tests/sandbox-integration.test.t
 - ゲーム状態のロード
 - サンドボックスゲームの開始
 - フルワークフロー（create → load → start）
+
+### 2. 包括的な統合テスト（実際のゲームデータ使用）
+
+```bash
+# 実際のsync.jsonデータを使用した包括的テスト
+TEST_SANDBOX_URL=http://localhost:3000 TEST_SANDBOX_WS_URL=ws://localhost:3000 bun test tests/sandbox-comprehensive.test.ts
+```
+
+このテストは以下を検証します：
+- サンドボックスルームの作成
+- 実際のゲームデータ（sync.json）の読み込み
+- ゲーム状態の復元
+- WebSocket接続による双方向通信
+- アクション送信メカニズム
+- フルワークフロー（データロード → 接続 → 通信）
+- プレイヤーデータの解析
+
+### 3. すべてのテストを実行
+
+```bash
+# すべての統合テストを実行
+TEST_SANDBOX_URL=http://localhost:3000 TEST_SANDBOX_WS_URL=ws://localhost:3000 bun test tests/sandbox-*.test.ts
+```
 
 ### 2. MCPサーバーとの統合テスト
 
