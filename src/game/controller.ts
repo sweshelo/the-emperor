@@ -2,8 +2,7 @@
  * Game controller - orchestrates WebSocket communication and agent decisions
  */
 
-import type { ClaudeAgent } from "../agent/claude.ts";
-import type { ParsedAction } from "../types/agent.ts";
+import type { Agent, ParsedAction } from "../types/agent.ts";
 import type {
   ServerMessage,
   GameState,
@@ -35,13 +34,13 @@ export interface GameControllerConfig {
 export class GameController {
   private wsClient: GameWebSocketClient;
   private stateManager: GameStateManager;
-  private agent: ClaudeAgent;
+  private agent: Agent;
   private config: GameControllerConfig;
   private isRunning = false;
 
   constructor(
     config: GameControllerConfig,
-    agent: ClaudeAgent,
+    agent: Agent,
     stateManager?: GameStateManager
   ) {
     this.config = config;
@@ -236,6 +235,17 @@ export class GameController {
     const myPlayer = this.stateManager.getMyPlayer();
     if (!myPlayer) {
       console.error("[Controller] Cannot get player for mulligan");
+      return;
+    }
+
+    // Check if agent supports mulligan decisions
+    if (!this.agent.decideMulligan) {
+      console.log("[Controller] Agent does not support mulligan - keeping hand");
+      this.wsClient.sendMcpAction({
+        type: "Mulligan",
+        player: this.config.playerId,
+        action: "done",
+      });
       return;
     }
 

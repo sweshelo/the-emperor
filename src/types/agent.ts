@@ -5,6 +5,21 @@
 import type { GameState, ChoicesMessage, McpClientPayload } from "./game.ts";
 
 /**
+ * Agent operating mode
+ */
+export type AgentMode = "autonomous" | "buddy";
+
+/**
+ * Mode-specific configuration
+ */
+export interface ModeConfig {
+  /** Operating mode */
+  mode: AgentMode;
+  /** Show detailed game state in buddy mode */
+  verbose?: boolean;
+}
+
+/**
  * Context provided to the agent for decision making
  */
 export interface DecisionContext {
@@ -48,9 +63,19 @@ export interface Agent {
   decideAction(context: DecisionContext): Promise<ParsedAction>;
 
   /**
+   * Decide mulligan (keep or redraw starting hand)
+   */
+  decideMulligan?(hand: import("../../suit/types/game/card/index.ts").IAtom[], playerId: string): Promise<ParsedAction>;
+
+  /**
    * Get agent name
    */
   getName(): string;
+
+  /**
+   * Clear any internal state (e.g., conversation history)
+   */
+  clearHistory?(): void;
 }
 
 /**

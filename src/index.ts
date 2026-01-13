@@ -5,27 +5,43 @@
  */
 
 import { ClaudeAgent } from "./agent/claude.ts";
+import { BuddyAgent } from "./agent/buddy.ts";
 import { GameController } from "./game/controller.ts";
 import { catalogService } from "./catalog/index.ts";
+import type { AgentMode, Agent } from "./types/agent.ts";
 
 /**
  * Configuration from environment variables
  */
 interface Config {
-  apiKey: string;
+  apiKey?: string;
   serverUrl: string;
   playerId: string;
   playerName: string;
   model?: string;
+  mode: AgentMode;
+}
+
+/**
+ * Validate and return agent mode from string
+ */
+function parseAgentMode(value: string | undefined): AgentMode {
+  if (value === "buddy") {
+    return "buddy";
+  }
+  return "autonomous";
 }
 
 /**
  * Load configuration from environment
  */
 function loadConfig(): Config {
+  const mode = parseAgentMode(process.env.AGENT_MODE);
+
+  // API key is only required for autonomous mode
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY environment variable is required");
+  if (mode === "autonomous" && !apiKey) {
+    throw new Error("ANTHROPIC_API_KEY environment variable is required for autonomous mode");
   }
 
   const serverUrl = process.env.GAME_SERVER_URL ?? "ws://localhost:3000";
@@ -39,7 +55,36 @@ function loadConfig(): Config {
     playerId,
     playerName,
     model,
+    mode,
   };
+}
+
+/**
+ * Create agent based on mode
+ */
+function createAgent(config: Config, catalogLookup: (id: string) => ReturnType<typeof catalogService.getCard>): Agent {
+  if (config.mode === "buddy") {
+    console.log("Mode: BUDDY (Interactive)");
+    console.log("  You control the agent via command line input");
+    return new BuddyAgent(config.playerName, catalogLookup);
+  }
+
+  // Autonomous mode
+  console.log("Mode: AUTONOMOUS (AI-controlled)");
+  console.log(`  Model: ${config.model ?? "claude-sonnet-4-20250514 (default)"}`);
+
+  if (!config.apiKey) {
+    throw new Error("API key required for autonomous mode");
+  }
+
+  return new ClaudeAgent(
+    config.playerName,
+    {
+      apiKey: config.apiKey,
+      model: config.model,
+    },
+    catalogLookup
+  );
 }
 
 async function main() {
@@ -59,21 +104,21 @@ async function main() {
   console.log(`Player ID: ${config.playerId}`);
   console.log(`Player Name: ${config.playerName}`);
   console.log(`Server URL: ${config.serverUrl}`);
-  console.log(`Model: ${config.model ?? "claude-sonnet-4-20250514 (default)"}`);
   console.log("");
 
   // Create catalog lookup function
   const catalogLookup = (id: string) => catalogService.getCard(id);
 
-  // Create agent
-  const agent = new ClaudeAgent(
-    config.playerName,
-    {
-      apiKey: config.apiKey,
-      model: config.model,
-    },
-    catalogLookup
-  );
+  // Create agent based on mode
+  let agent: Agent;
+  try {
+    agent = createAgent(config, catalogLookup);
+  } catch (error) {
+    console.error("Failed to create agent:", error);
+    process.exit(1);
+  }
+
+  console.log("");
 
   // Create game controller
   const controller = new GameController(
@@ -88,6 +133,9 @@ async function main() {
   // Handle graceful shutdown
   const shutdown = () => {
     console.log("\nShutting down...");
+    if (agent.clearHistory) {
+      agent.clearHistory();
+    }
     controller.stop();
     process.exit(0);
   };
