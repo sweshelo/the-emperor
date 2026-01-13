@@ -454,21 +454,12 @@ export class BuddyAgent implements Agent {
       }
 
       case "end": {
-        // End turn requires a choice prompt - this should be called in response to a choice
-        // For now, we'll attempt to end turn by looking for an end turn choice
-        if (choice) {
-          return {
-            type: "Continue",
-            payload: {
-              type: "Continue",
-              promptId: choice.promptId,
-              player: myPlayerId,
-            },
-          };
-        }
-        // If no choice is active, we cannot end turn via Continue
-        console.log("Cannot end turn without an active prompt. Wait for your turn or use a different action.");
-        return null;
+        return {
+          type: "TurnEnd",
+          payload: {
+            type: "TurnEnd",
+          },
+        };
       }
 
       case "choose": {

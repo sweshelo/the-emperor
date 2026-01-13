@@ -42,15 +42,24 @@ export interface ParsedAction {
 }
 
 /**
+ * Model type for Claude agent
+ */
+export type ModelType = "light" | "think";
+
+/**
  * Agent configuration
  */
 export interface AgentConfig {
   /** Anthropic API key */
   apiKey: string;
-  /** Model to use (defaults to claude-sonnet-4-20250514) */
+  /** Model type: "light" for fast responses, "think" for extended thinking */
+  modelType?: ModelType;
+  /** Custom model override (if not using modelType presets) */
   model?: string;
   /** Maximum tokens for response (defaults to 1024) */
   maxTokens?: number;
+  /** Budget tokens for extended thinking (only used with "think" modelType) */
+  thinkingBudget?: number;
 }
 
 /**

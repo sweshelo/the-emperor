@@ -24,6 +24,7 @@ import type {
   ChoosePayload,
   ContinuePayload,
   MulliganPayload,
+  TurnEndPayload,
 } from "../../suit/types/message/payload/index.ts";
 
 /**
@@ -217,4 +218,5 @@ export type McpClientPayload =
   | DiscardPayload
   | ChoosePayload
   | ContinuePayload
-  | MulliganPayload;
+  | MulliganPayload
+  | TurnEndPayload;

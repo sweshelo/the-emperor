@@ -11,7 +11,7 @@ import type {
 } from "../types/game.ts";
 import { GameWebSocketClient } from "../websocket/client.ts";
 import { GameStateManager } from "./state.ts";
-import { isServerMessagePayload, isSyncPayload, isChoicesPayload, isTurnChangePayload, isMulliganStartPayload } from "../schemas/index.ts";
+import { isServerMessagePayload, isSyncPayload, isChoicesPayload, isTurnChangePayload, isMulliganStartPayload, isOperationPayload } from "../schemas/index.ts";
 
 /**
  * Configuration for the game controller
@@ -38,6 +38,7 @@ export class GameController {
   private agent: Agent;
   private config: GameControllerConfig;
   private isRunning = false;
+  private canAct = false; // defrost/freeze state
 
   constructor(
     config: GameControllerConfig,
@@ -144,7 +145,7 @@ export class GameController {
     switch (payloadType) {
       case "Sync":
         if (isSyncPayload(payload)) {
-          this.handleSync(payload.body);
+          await this.handleSync(payload.body);
         }
         break;
 
@@ -167,7 +168,9 @@ export class GameController {
         break;
 
       case "Operation":
-        console.log(`[Controller] Operation: ${JSON.stringify(payload)}`);
+        if (isOperationPayload(payload)) {
+          await this.handleOperation(payload.action);
+        }
         break;
 
       default:
@@ -179,9 +182,12 @@ export class GameController {
   /**
    * Handle game state sync
    */
-  private handleSync(state: GameState): void {
+  private async handleSync(state: GameState): Promise<void> {
     console.log(`[Controller] Sync - Round: ${state.game.round}, Turn: ${state.game.turn}`);
     this.stateManager.updateState(state);
+
+    // If we received defrost before Sync, now we can act
+    await this.tryAct();
   }
 
   /**
@@ -226,6 +232,47 @@ export class GameController {
   private handleTurnChange(player: string, isFirst: boolean): void {
     const isMyTurn = player === this.config.playerId;
     console.log(`[Controller] Turn change - Player: ${player}, First: ${isFirst}, MyTurn: ${isMyTurn}`);
+  }
+
+  /**
+   * Handle operation (freeze/defrost) events
+   */
+  private async handleOperation(action: "freeze" | "defrost"): Promise<void> {
+    console.log(`[Controller] Operation: ${action}`);
+
+    if (action === "defrost") {
+      this.canAct = true;
+      // Try to act now if game state is ready
+      await this.tryAct();
+    } else {
+      // freeze
+      this.canAct = false;
+    }
+  }
+
+  /**
+   * Try to take action if conditions are met (canAct && game state ready)
+   */
+  private async tryAct(): Promise<void> {
+    if (!this.canAct) {
+      return;
+    }
+
+    const context = this.stateManager.getDecisionContext();
+    if (!context) {
+      // Game state not yet synced - will retry when Sync arrives
+      return;
+    }
+
+    // Reset flag before calling agent to prevent duplicate calls
+    this.canAct = false;
+
+    try {
+      const decisionAction = await this.agent.decideAction(context);
+      this.executeAction(decisionAction);
+    } catch (error) {
+      console.error("[Controller] Agent decision error:", error);
+    }
   }
 
   /**
