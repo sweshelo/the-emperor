@@ -19,9 +19,10 @@
   "devDependencies": {
     "@types/bun": "latest",
     "@types/node": "^22.10.5",
+    "@types/react": "^19.2.8",
     "eslint": "^9.18.0",
-    "typescript-eslint": "^8.20.0",
-    "oxlint": "^0.16.0"
+    "oxlint": "^0.16.0",
+    "typescript-eslint": "^8.20.0"
   },
   "peerDependencies": {
     "typescript": "^5"
@@ -30,6 +31,9 @@
     "@anthropic-ai/sdk": "^0.39.0",
     "@modelcontextprotocol/sdk": "^1.25.2",
     "@toon-format/toon": "^2.1.0",
+    "ink": "^6.6.0",
+    "ink-text-input": "^6.0.0",
+    "react": "^19.2.3",
     "zod": "^4.3.5"
   }
 }

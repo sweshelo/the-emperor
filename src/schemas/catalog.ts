@@ -3,7 +3,6 @@
  */
 
 import { z } from "zod";
-import { cardTypeSchema } from "./mcp-args.ts";
 
 // ============================================
 // Catalog card schema

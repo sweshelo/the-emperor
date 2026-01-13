@@ -3,12 +3,12 @@
  * With optional AI advisor for evaluation and advice
  */
 
-import * as readline from "node:readline";
 import type { Agent, DecisionContext, ParsedAction } from "../types/agent.ts";
 import type { IAtom } from "../../suit/types/game/card/index.ts";
 import { type CatalogCard, isJokerCard } from "../schemas/catalog.ts";
 import type { ICard, ChoicesMessage } from "../types/game.ts";
 import { AIAdvisor, type AdvisorConfig, type LearningRecord } from "./advisor.ts";
+import { TuiController } from "./buddy-tui.tsx";
 
 /**
  * Type guard to check if an IAtom has catalogId (is actually an ICard)
@@ -98,7 +98,7 @@ export interface BuddyAgentConfig {
  */
 export class BuddyAgent implements Agent {
   private catalogLookup: (id: string) => CatalogCard | undefined;
-  private rl: readline.Interface | null = null;
+  private tui: TuiController;
   private advisor: AIAdvisor | null = null;
   private autoEvaluate: boolean;
   private learningRecordsPath: string | null;
@@ -113,10 +113,14 @@ export class BuddyAgent implements Agent {
     this.autoEvaluate = config?.autoEvaluate ?? false;
     this.learningRecordsPath = config?.learningRecordsPath ?? null;
 
+    // Initialize TUI
+    this.tui = new TuiController();
+    this.tui.start();
+
     // Initialize AI advisor if API key provided
     if (config?.advisor) {
       this.advisor = new AIAdvisor(config.advisor, catalogLookup);
-      console.log("[BuddyAgent] AIアドバイザーを有効化しました");
+      this.tui.addMessage("system", "AIアドバイザーを有効化しました");
 
       // Load existing learning records
       if (this.learningRecordsPath) {
@@ -138,100 +142,102 @@ export class BuddyAgent implements Agent {
     const opponentId = Object.keys(gameState.players).find((id) => id !== myPlayerId);
     const opponent = opponentId ? gameState.players[opponentId] : null;
 
-    console.log("\n" + "=".repeat(60));
-    console.log(`  GAME STATE - Round ${gameState.game.round}, Turn ${gameState.game.turn}`);
-    console.log("=".repeat(60));
+    // Update game status in header
+    this.tui.setGameStatus(`Round ${gameState.game.round}, Turn ${gameState.game.turn}`);
+
+    this.tui.addMessage("game", "=".repeat(50));
+    this.tui.addMessage("game", `GAME STATE - Round ${gameState.game.round}, Turn ${gameState.game.turn}`);
 
     // Opponent state
     if (opponent) {
-      console.log("\n--- OPPONENT ---");
-      console.log(`  Life: ${opponent.life.current}/${opponent.life.max} | CP: ${opponent.cp.current}/${opponent.cp.max}`);
-      console.log(`  Hand: ${opponent.hand.length} cards | Triggers: ${opponent.trigger.length}`);
+      this.tui.addMessage("game", "--- OPPONENT ---");
+      this.tui.addMessage("game", `Life: ${opponent.life.current}/${opponent.life.max} | CP: ${opponent.cp.current}/${opponent.cp.max}`);
+      this.tui.addMessage("game", `Hand: ${opponent.hand.length} cards | Triggers: ${opponent.trigger.length}`);
 
       if (opponent.field.length > 0) {
-        console.log("  Field:");
+        this.tui.addMessage("game", "Field:");
         for (const unit of opponent.field) {
           const info = this.catalogLookup(unit.catalogId);
           const status = unit.active ? "Active" : "Exhausted";
-          console.log(`    [${unit.id}] ${info?.name ?? unit.catalogId} BP:${unit.bp} (${status})`);
+          this.tui.addMessage("game", `  [${unit.id}] ${info?.name ?? unit.catalogId} BP:${unit.bp} (${status})`);
         }
       } else {
-        console.log("  Field: Empty");
+        this.tui.addMessage("game", "Field: Empty");
       }
     }
 
     // My state
     if (myPlayer) {
-      console.log("\n--- YOUR STATE ---");
-      console.log(`  Life: ${myPlayer.life.current}/${myPlayer.life.max} | CP: ${myPlayer.cp.current}/${myPlayer.cp.max}`);
+      this.tui.addMessage("game", "--- YOUR STATE ---");
+      this.tui.addMessage("game", `Life: ${myPlayer.life.current}/${myPlayer.life.max} | CP: ${myPlayer.cp.current}/${myPlayer.cp.max}`);
 
       if (myPlayer.hand.length > 0) {
-        console.log("  Hand:");
+        this.tui.addMessage("game", "Hand:");
         for (const atom of myPlayer.hand) {
           if (hasCardInfo(atom)) {
             const info = this.catalogLookup(atom.catalogId);
             const { bp, color } = getCardDisplayInfo(info);
-            console.log(`    [${atom.id}] ${info?.name ?? atom.catalogId} (Cost:${info?.cost ?? "?"}${bp}) [${color}]`);
+            this.tui.addMessage("game", `  [${atom.id}] ${info?.name ?? atom.catalogId} (Cost:${info?.cost ?? "?"}${bp}) [${color}]`);
           }
         }
       } else {
-        console.log("  Hand: Empty");
+        this.tui.addMessage("game", "Hand: Empty");
       }
 
       if (myPlayer.field.length > 0) {
-        console.log("  Field:");
+        this.tui.addMessage("game", "Field:");
         for (const unit of myPlayer.field) {
           const info = this.catalogLookup(unit.catalogId);
           const status = unit.active ? "Active" : "Exhausted";
           const boot = unit.hasBootAbility && !unit.isBooted ? " [Boot Available]" : "";
-          console.log(`    [${unit.id}] ${info?.name ?? unit.catalogId} BP:${unit.bp} (${status})${boot}`);
+          this.tui.addMessage("game", `  [${unit.id}] ${info?.name ?? unit.catalogId} BP:${unit.bp} (${status})${boot}`);
         }
       } else {
-        console.log("  Field: Empty");
+        this.tui.addMessage("game", "Field: Empty");
       }
 
       if (myPlayer.trigger.length > 0) {
-        console.log(`  Triggers set: ${myPlayer.trigger.length}`);
+        this.tui.addMessage("game", `Triggers set: ${myPlayer.trigger.length}`);
       }
 
       if (myPlayer.joker.card.length > 0) {
         const jokerInfo = myPlayer.joker.card.map((j) => `${j.chara}(${j.cost})`).join(", ");
-        console.log(`  JOKER: ${jokerInfo} | Gauge: ${myPlayer.joker.gauge}%`);
+        this.tui.addMessage("game", `JOKER: ${jokerInfo} | Gauge: ${myPlayer.joker.gauge}%`);
       }
     }
 
-    console.log("=".repeat(60));
+    this.tui.addMessage("game", "=".repeat(50));
   }
 
   /**
    * Display current choice options
    */
   private displayChoice(choice: ChoicesMessage): void {
-    console.log("\n--- CHOICE REQUIRED ---");
-    console.log(`  ${choice.choices.title}`);
-    console.log(`  Type: ${choice.choices.type} | PromptID: ${choice.promptId}`);
+    this.tui.addMessage("system", "--- CHOICE REQUIRED ---");
+    this.tui.addMessage("system", `${choice.choices.title}`);
+    this.tui.addMessage("system", `Type: ${choice.choices.type} | PromptID: ${choice.promptId}`);
 
     if (choice.choices.isCancelable) {
-      console.log("  (Can be cancelled - enter empty to decline)");
+      this.tui.addMessage("system", "(Can be cancelled - enter empty to decline)");
     }
 
     if (choice.choices.count !== undefined) {
-      console.log(`  Select up to ${choice.choices.count} item(s)`);
+      this.tui.addMessage("system", `Select up to ${choice.choices.count} item(s)`);
     }
 
-    console.log("  Options:");
+    this.tui.addMessage("system", "Options:");
     for (const item of choice.choices.items) {
       if (isItemWithBp(item)) {
         // It's a unit
         const info = this.catalogLookup(item.catalogId);
-        console.log(`    [${item.id}] ${info?.name ?? item.catalogId} BP:${item.bp}`);
+        this.tui.addMessage("system", `  [${item.id}] ${info?.name ?? item.catalogId} BP:${item.bp}`);
       } else if (isItemWithCatalogId(item)) {
         // It's a card
         const info = this.catalogLookup(item.catalogId);
-        console.log(`    [${item.id}] ${info?.name ?? item.catalogId}`);
+        this.tui.addMessage("system", `  [${item.id}] ${info?.name ?? item.catalogId}`);
       } else if (isItemWithName(item)) {
         // It's an option
-        console.log(`    [${item.id}] ${item.name}`);
+        this.tui.addMessage("system", `  [${item.id}] ${item.name}`);
       }
     }
   }
@@ -240,55 +246,40 @@ export class BuddyAgent implements Agent {
    * Display available commands
    */
   private displayHelp(context: DecisionContext): void {
-    console.log("\n--- AVAILABLE COMMANDS ---");
+    this.tui.addMessage("system", "--- AVAILABLE COMMANDS ---");
 
     if (context.choice) {
-      console.log("  choose <id1> [id2] ... - Select option(s) from the choice");
-      console.log("  decline               - Decline/cancel the choice (if cancelable)");
+      this.tui.addMessage("system", "choose <id1> [id2] ... - Select option(s) from the choice");
+      this.tui.addMessage("system", "decline               - Decline/cancel the choice (if cancelable)");
     } else {
-      console.log("  summon <card_id>      - Summon a unit from hand");
-      console.log("  attack <unit_id>      - Attack with a unit");
-      console.log("  set <card_id>         - Set a trigger/intercept card");
-      console.log("  boot <unit_id>        - Use unit's boot ability");
-      console.log("  withdraw <unit_id>    - Withdraw a unit from field");
-      console.log("  override <src> <tgt>  - Override card onto target");
-      console.log("  joker <joker_id>      - Use JOKER ability");
-      console.log("  end                   - End your turn");
+      this.tui.addMessage("system", "summon <card_id>      - Summon a unit from hand");
+      this.tui.addMessage("system", "attack <unit_id>      - Attack with a unit");
+      this.tui.addMessage("system", "set <card_id>         - Set a trigger/intercept card");
+      this.tui.addMessage("system", "boot <unit_id>        - Use unit's boot ability");
+      this.tui.addMessage("system", "withdraw <unit_id>    - Withdraw a unit from field");
+      this.tui.addMessage("system", "override <src> <tgt>  - Override card onto target");
+      this.tui.addMessage("system", "joker <joker_id>      - Use JOKER ability");
+      this.tui.addMessage("system", "end                   - End your turn");
     }
 
-    console.log("");
-    console.log("  state                 - Redisplay game state");
-    console.log("  help                  - Show this help");
+    this.tui.addMessage("system", "state                 - Redisplay game state");
+    this.tui.addMessage("system", "help                  - Show this help");
 
     // AI advisor commands
     if (this.advisor) {
-      console.log("");
-      console.log("--- AI ADVISOR COMMANDS ---");
-      console.log("  /think                - AI analyzes current situation");
-      console.log("  /advice <action>      - Get advice for specific action");
-      console.log("  /records              - Show learning records summary");
-      console.log("  /save                 - Save learning records");
+      this.tui.addMessage("ai", "--- AI ADVISOR COMMANDS ---");
+      this.tui.addMessage("ai", "/think                - AI analyzes current situation");
+      this.tui.addMessage("ai", "/advice <action>      - Get advice for specific action");
+      this.tui.addMessage("ai", "/records              - Show learning records summary");
+      this.tui.addMessage("ai", "/save                 - Save learning records");
     }
-
-    console.log("-".repeat(30));
   }
 
   /**
-   * Read a line from stdin
+   * Read a line from TUI
    */
   private async readLine(prompt: string): Promise<string> {
-    if (!this.rl) {
-      this.rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout,
-      });
-    }
-
-    return new Promise((resolve) => {
-      this.rl?.question(prompt, (answer) => {
-        resolve(answer.trim());
-      });
-    });
+    return this.tui.readLine(prompt);
   }
 
   /**
@@ -303,12 +294,12 @@ export class BuddyAgent implements Agent {
     switch (command) {
       case "summon": {
         if (args.length < 1) {
-          console.log("Usage: summon <card_id>");
+          this.tui.addMessage("error", "Usage: summon <card_id>");
           return null;
         }
         const summonCardId = args[0];
         if (summonCardId === undefined) {
-          console.log("Usage: summon <card_id>");
+          this.tui.addMessage("error", "Usage: summon <card_id>");
           return null;
         }
         return {
@@ -323,18 +314,18 @@ export class BuddyAgent implements Agent {
 
       case "attack": {
         if (args.length < 1) {
-          console.log("Usage: attack <unit_id>");
+          this.tui.addMessage("error", "Usage: attack <unit_id>");
           return null;
         }
         const unitId = args[0];
         if (unitId === undefined) {
-          console.log("Usage: attack <unit_id>");
+          this.tui.addMessage("error", "Usage: attack <unit_id>");
           return null;
         }
         const myPlayer = context.gameState.players[myPlayerId];
         const unit = myPlayer?.field.find((u) => u.id === unitId);
         if (!unit) {
-          console.log(`Unit not found: ${unitId}`);
+          this.tui.addMessage("error", `Unit not found: ${unitId}`);
           return null;
         }
         return {
@@ -349,18 +340,18 @@ export class BuddyAgent implements Agent {
 
       case "set": {
         if (args.length < 1) {
-          console.log("Usage: set <card_id>");
+          this.tui.addMessage("error", "Usage: set <card_id>");
           return null;
         }
         const cardId = args[0];
         if (cardId === undefined) {
-          console.log("Usage: set <card_id>");
+          this.tui.addMessage("error", "Usage: set <card_id>");
           return null;
         }
         const myPlayerForSet = context.gameState.players[myPlayerId];
         const card = myPlayerForSet?.hand.find((a) => a.id === cardId);
         if (!card || !hasCardInfo(card)) {
-          console.log(`Card not found: ${cardId}`);
+          this.tui.addMessage("error", `Card not found: ${cardId}`);
           return null;
         }
         return {
@@ -375,18 +366,18 @@ export class BuddyAgent implements Agent {
 
       case "boot": {
         if (args.length < 1) {
-          console.log("Usage: boot <unit_id>");
+          this.tui.addMessage("error", "Usage: boot <unit_id>");
           return null;
         }
         const bootUnitId = args[0];
         if (bootUnitId === undefined) {
-          console.log("Usage: boot <unit_id>");
+          this.tui.addMessage("error", "Usage: boot <unit_id>");
           return null;
         }
         const myPlayerForBoot = context.gameState.players[myPlayerId];
         const bootUnit = myPlayerForBoot?.field.find((u) => u.id === bootUnitId);
         if (!bootUnit) {
-          console.log(`Unit not found: ${bootUnitId}`);
+          this.tui.addMessage("error", `Unit not found: ${bootUnitId}`);
           return null;
         }
         return {
@@ -401,18 +392,18 @@ export class BuddyAgent implements Agent {
 
       case "withdraw": {
         if (args.length < 1) {
-          console.log("Usage: withdraw <unit_id>");
+          this.tui.addMessage("error", "Usage: withdraw <unit_id>");
           return null;
         }
         const withdrawUnitId = args[0];
         if (withdrawUnitId === undefined) {
-          console.log("Usage: withdraw <unit_id>");
+          this.tui.addMessage("error", "Usage: withdraw <unit_id>");
           return null;
         }
         const myPlayerForWithdraw = context.gameState.players[myPlayerId];
         const withdrawUnit = myPlayerForWithdraw?.field.find((u) => u.id === withdrawUnitId);
         if (!withdrawUnit) {
-          console.log(`Unit not found: ${withdrawUnitId}`);
+          this.tui.addMessage("error", `Unit not found: ${withdrawUnitId}`);
           return null;
         }
         return {
@@ -427,13 +418,13 @@ export class BuddyAgent implements Agent {
 
       case "override": {
         if (args.length < 2) {
-          console.log("Usage: override <source_card_id> <target_card_id>");
+          this.tui.addMessage("error", "Usage: override <source_card_id> <target_card_id>");
           return null;
         }
         const srcId = args[0];
         const tgtId = args[1];
         if (srcId === undefined || tgtId === undefined) {
-          console.log("Usage: override <source_card_id> <target_card_id>");
+          this.tui.addMessage("error", "Usage: override <source_card_id> <target_card_id>");
           return null;
         }
         return {
@@ -449,12 +440,12 @@ export class BuddyAgent implements Agent {
 
       case "joker": {
         if (args.length < 1) {
-          console.log("Usage: joker <joker_id>");
+          this.tui.addMessage("error", "Usage: joker <joker_id>");
           return null;
         }
         const jokerId = args[0];
         if (jokerId === undefined) {
-          console.log("Usage: joker <joker_id>");
+          this.tui.addMessage("error", "Usage: joker <joker_id>");
           return null;
         }
         return {
@@ -478,7 +469,7 @@ export class BuddyAgent implements Agent {
 
       case "choose": {
         if (!choice) {
-          console.log("No choice prompt active");
+          this.tui.addMessage("error", "No choice prompt active");
           return null;
         }
         const selectedIds: string[] = args.filter((arg): arg is string => typeof arg === "string");
@@ -494,7 +485,7 @@ export class BuddyAgent implements Agent {
 
       case "decline": {
         if (!choice) {
-          console.log("No choice prompt active");
+          this.tui.addMessage("error", "No choice prompt active");
           return null;
         }
         return {
@@ -512,8 +503,8 @@ export class BuddyAgent implements Agent {
         return null; // These are handled separately
 
       default:
-        console.log(`Unknown command: ${command}`);
-        console.log("Type 'help' for available commands");
+        this.tui.addMessage("error", `Unknown command: ${command}`);
+        this.tui.addMessage("system", "Type 'help' for available commands");
         return null;
     }
   }
@@ -532,14 +523,13 @@ export class BuddyAgent implements Agent {
 
     switch (command) {
       case "/think": {
-        console.log("\n[AI] 状況を分析中...\n");
+        this.tui.addMessage("ai", "状況を分析中...");
         try {
           const analysis = await this.advisor.think(context);
-          console.log("--- AI分析結果 ---");
-          console.log(analysis);
-          console.log("-".repeat(30));
+          this.tui.addMessage("ai", "--- AI分析結果 ---");
+          this.tui.addLines("ai", analysis);
         } catch (error) {
-          console.error("[AI] 分析エラー:", error);
+          this.tui.addMessage("error", `分析エラー: ${error}`);
         }
         return true;
       }
@@ -547,41 +537,39 @@ export class BuddyAgent implements Agent {
       case "/advice": {
         const actionType = parts.slice(1).join(" ");
         if (!actionType) {
-          console.log("Usage: /advice <action_type>");
-          console.log("Example: /advice summon, /advice attack, /advice end");
+          this.tui.addMessage("system", "Usage: /advice <action_type>");
+          this.tui.addMessage("system", "Example: /advice summon, /advice attack, /advice end");
           return true;
         }
-        console.log(`\n[AI] 「${actionType}」についてアドバイス中...\n`);
+        this.tui.addMessage("ai", `「${actionType}」についてアドバイス中...`);
         try {
           const advice = await this.advisor.getAdviceFor(context, actionType);
-          console.log("--- AIアドバイス ---");
-          console.log(advice);
-          console.log("-".repeat(30));
+          this.tui.addMessage("ai", "--- AIアドバイス ---");
+          this.tui.addLines("ai", advice);
         } catch (error) {
-          console.error("[AI] アドバイスエラー:", error);
+          this.tui.addMessage("error", `アドバイスエラー: ${error}`);
         }
         return true;
       }
 
       case "/records": {
         const records = this.advisor.getLearningRecords();
-        console.log("\n--- 学習記録サマリー ---");
-        console.log(`総記録数: ${records.length}`);
+        this.tui.addMessage("ai", "--- 学習記録サマリー ---");
+        this.tui.addMessage("ai", `総記録数: ${records.length}`);
 
         if (records.length > 0) {
           const goodMoves = records.filter((r) => r.score > 0).length;
           const badMoves = records.filter((r) => r.score < 0).length;
-          console.log(`好手: ${goodMoves}, 悪手: ${badMoves}, 普通: ${records.length - goodMoves - badMoves}`);
+          this.tui.addMessage("ai", `好手: ${goodMoves}, 悪手: ${badMoves}, 普通: ${records.length - goodMoves - badMoves}`);
 
-          console.log("\n最近の記録:");
+          this.tui.addMessage("ai", "最近の記録:");
           const recentRecords = records.slice(-5);
           for (const record of recentRecords) {
             const scoreIcon = record.score > 0 ? "◎" : record.score < 0 ? "×" : "○";
-            console.log(`  ${scoreIcon} ${record.situation} - ${record.userAction}`);
-            console.log(`    → ${record.reasoning}`);
+            this.tui.addMessage("ai", `  ${scoreIcon} ${record.situation} - ${record.userAction}`);
+            this.tui.addMessage("ai", `    → ${record.reasoning}`);
           }
         }
-        console.log("-".repeat(30));
         return true;
       }
 
@@ -647,7 +635,7 @@ export class BuddyAgent implements Agent {
         // Evaluate the action if auto-evaluate is enabled
         if (this.autoEvaluate && this.advisor) {
           this.evaluateUserAction(context, action).catch((err) => {
-            console.error("[AI] 評価エラー:", err);
+            this.tui.addMessage("error", `評価エラー: ${err}`);
           });
         }
         return action;
@@ -665,7 +653,7 @@ export class BuddyAgent implements Agent {
     const result = await this.advisor.evaluateAndRecord(context, action.type, actionDescription);
 
     if (result.recorded) {
-      console.log(`\n[AI評価] ${result.evaluation} (記録済み)`);
+      this.tui.addMessage("ai", `[評価] ${result.evaluation} (記録済み)`);
     }
   }
 
@@ -738,23 +726,24 @@ export class BuddyAgent implements Agent {
    * Mulligan decision - ask user to keep or redraw
    */
   async decideMulligan(hand: IAtom[], playerId: string): Promise<ParsedAction> {
-    console.log("\n" + "=".repeat(60));
-    console.log("  MULLIGAN DECISION");
-    console.log("=".repeat(60));
-    console.log("\nYour starting hand:");
+    this.tui.setGameStatus("Mulligan Phase");
+    this.tui.addMessage("game", "=".repeat(50));
+    this.tui.addMessage("game", "MULLIGAN DECISION");
+    this.tui.addMessage("game", "=".repeat(50));
+    this.tui.addMessage("game", "Your starting hand:");
 
     for (const atom of hand) {
       if (hasCardInfo(atom)) {
         const info = this.catalogLookup(atom.catalogId);
         const { bp, color } = getCardDisplayInfo(info);
-        console.log(`  [${atom.id}] ${info?.name ?? atom.catalogId} (Cost:${info?.cost ?? "?"}${bp}) [${color}]`);
+        this.tui.addMessage("game", `  [${atom.id}] ${info?.name ?? atom.catalogId} (Cost:${info?.cost ?? "?"}${bp}) [${color}]`);
       }
     }
 
-    console.log("\nCommands: 'keep' to keep this hand, 'redraw' to mulligan");
+    this.tui.addMessage("system", "Commands: 'keep' to keep this hand, 'redraw' to mulligan");
 
     while (true) {
-      const input = await this.readLine("\n> ");
+      const input = await this.readLine(">");
       const command = input.toLowerCase();
 
       if (command === "keep" || command === "done") {
@@ -779,7 +768,7 @@ export class BuddyAgent implements Agent {
         };
       }
 
-      console.log("Please enter 'keep' or 'redraw'");
+      this.tui.addMessage("error", "Please enter 'keep' or 'redraw'");
     }
   }
 
@@ -841,16 +830,16 @@ export class BuddyAgent implements Agent {
    */
   private async saveLearningRecords(): Promise<void> {
     if (!this.learningRecordsPath || !this.advisor) {
-      console.log("[BuddyAgent] 保存パスが設定されていません");
+      this.tui.addMessage("system", "保存パスが設定されていません");
       return;
     }
 
     try {
       const records = this.advisor.getLearningRecords();
       await Bun.write(this.learningRecordsPath, JSON.stringify(records, null, 2));
-      console.log(`[BuddyAgent] 学習記録を保存しました: ${this.learningRecordsPath}`);
+      this.tui.addMessage("system", `学習記録を保存しました: ${this.learningRecordsPath}`);
     } catch (error) {
-      console.error("[BuddyAgent] 保存エラー:", error);
+      this.tui.addMessage("error", `保存エラー: ${error}`);
     }
   }
 
@@ -862,19 +851,24 @@ export class BuddyAgent implements Agent {
   }
 
   /**
-   * Cleanup readline interface and save records
+   * Get TUI controller (for external access)
+   */
+  getTui(): TuiController {
+    return this.tui;
+  }
+
+  /**
+   * Cleanup TUI and save records
    */
   clearHistory(): void {
     // Save learning records before cleanup
     if (this.advisor && this.learningRecordsPath) {
-      this.saveLearningRecords().catch((err) => {
-        console.error("[BuddyAgent] 終了時の保存エラー:", err);
+      this.saveLearningRecords().catch(() => {
+        // Ignore errors during cleanup
       });
     }
 
-    if (this.rl) {
-      this.rl.close();
-      this.rl = null;
-    }
+    // Stop TUI
+    this.tui.stop();
   }
 }
