@@ -259,3 +259,30 @@ export function isOperationPayload(payload: unknown): payload is OperationPayloa
   if (payload.type !== "Operation") return false;
   return "action" in payload;
 }
+
+// ============================================
+// Effect payload type guards
+// ============================================
+
+import type {
+  DisplayEffectPayload,
+  VisualEffectPayload,
+} from "../../suit/types/message/payload/client.ts";
+
+/**
+ * Type guard for DisplayEffect payload
+ */
+export function isDisplayEffectPayload(payload: unknown): payload is DisplayEffectPayload {
+  if (!isServerMessagePayload(payload)) return false;
+  if (payload.type !== "DisplayEffect") return false;
+  return "promptId" in payload && "title" in payload && "message" in payload;
+}
+
+/**
+ * Type guard for VisualEffect payload
+ */
+export function isVisualEffectPayload(payload: unknown): payload is VisualEffectPayload {
+  if (!isServerMessagePayload(payload)) return false;
+  if (payload.type !== "VisualEffect") return false;
+  return "body" in payload && typeof payload.body === "object";
+}

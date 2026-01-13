@@ -37,6 +37,8 @@ export {
   isTurnChangePayload,
   isMulliganStartPayload,
   isOperationPayload,
+  isDisplayEffectPayload,
+  isVisualEffectPayload,
   type SandboxStatus,
   type SandboxCreateResponse,
   type SandboxLoadStateResponse,

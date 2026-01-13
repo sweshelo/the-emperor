@@ -74,26 +74,21 @@ function createAgent(
     console.log("Mode: BUDDY (Interactive)");
     console.log("  You control the agent via command line input");
 
-    // Enable AI advisor if API key is available
+    // Enable unified AI if API key is available
     if (config.apiKey) {
-      console.log("  AI Advisor: ENABLED (use /think, /advice commands)");
-      console.log("  Realtime Analysis: ENABLED (use /comment, /thread commands)");
+      console.log("  AI Support: ENABLED (use /think, /advice, /comment commands)");
+      console.log("  All AI interactions use a single unified thread");
       return new BuddyAgent(config.playerName, catalogLookup, {
-        advisor: {
+        ai: {
           apiKey: config.apiKey,
-          model: config.model,
+          model: config.model ?? "claude-3-5-haiku-20241022",
         },
         autoEvaluate: true,
         learningRecordsPath: LEARNING_RECORDS_PATH,
-        threadManager: {
-          apiKey: config.apiKey,
-          model: "claude-3-5-haiku-20241022",
-          debounceMs: 1000,
-        },
       });
     }
 
-    console.log("  AI Advisor: DISABLED (set ANTHROPIC_API_KEY to enable)");
+    console.log("  AI Support: DISABLED (set ANTHROPIC_API_KEY to enable)");
     return new BuddyAgent(config.playerName, catalogLookup);
   }
 

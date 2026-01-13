@@ -11,7 +11,8 @@ import type {
 } from "../types/game.ts";
 import { GameWebSocketClient } from "../websocket/client.ts";
 import { GameStateManager } from "./state.ts";
-import { isServerMessagePayload, isSyncPayload, isChoicesPayload, isTurnChangePayload, isMulliganStartPayload, isOperationPayload } from "../schemas/index.ts";
+import { isServerMessagePayload, isSyncPayload, isChoicesPayload, isTurnChangePayload, isMulliganStartPayload, isOperationPayload, isDisplayEffectPayload, isVisualEffectPayload } from "../schemas/index.ts";
+import type { VisualEffectPayload } from "../../suit/types/message/payload/client.ts";
 
 /**
  * Configuration for the game controller
@@ -170,6 +171,29 @@ export class GameController {
       case "Operation":
         if (isOperationPayload(payload)) {
           await this.handleOperation(payload.action);
+        }
+        break;
+
+      case "DisplayEffect":
+        if (isDisplayEffectPayload(payload)) {
+          // Notify AI about the effect display
+          if (this.agent.pushGameEvent) {
+            this.agent.pushGameEvent(`[効果表示] ${payload.title}: ${payload.message}`);
+          }
+          // Send confirmation to server (it's waiting for client acknowledgment)
+          this.wsClient.send({
+            action: { type: "continue", handler: "client" },
+            payload: { type: "Continue", promptId: payload.promptId, player: this.config.playerId },
+          });
+        }
+        break;
+
+      case "VisualEffect":
+        if (isVisualEffectPayload(payload)) {
+          const desc = this.formatVisualEffect(payload.body);
+          if (desc && this.agent.pushGameEvent) {
+            this.agent.pushGameEvent(desc);
+          }
         }
         break;
 
@@ -353,5 +377,29 @@ export class GameController {
    */
   isActive(): boolean {
     return this.isRunning;
+  }
+
+  /**
+   * Format VisualEffect payload into human-readable description
+   */
+  private formatVisualEffect(body: VisualEffectPayload["body"]): string | null {
+    switch (body.effect) {
+      case "drive":
+        return `[発動] ${body.type}カード`;
+      case "attack":
+        return `[アタック宣言]`;
+      case "block":
+        return `[ブロック宣言]`;
+      case "launch":
+        return `[攻撃実行]`;
+      case "launch-cancel":
+        return `[攻撃キャンセル]`;
+      case "status":
+        return `[ステータス変化] ${body.type}: ${body.value}`;
+      case "select":
+        return null; // Don't report selection events
+      default:
+        return null;
+    }
   }
 }

@@ -1,15 +1,14 @@
 /**
  * Buddy Mode Agent - Interactive agent that takes commands from the user
- * With optional AI advisor for evaluation and advice
+ * With unified AI support for analysis and advice
  */
 
 import type { Agent, DecisionContext, ParsedAction } from "../types/agent.ts";
 import type { IAtom } from "../../suit/types/game/card/index.ts";
 import { type CatalogCard, isJokerCard } from "../schemas/catalog.ts";
 import type { ICard, ChoicesMessage, GameState } from "../types/game.ts";
-import { AIAdvisor, type AdvisorConfig, type LearningRecord } from "./advisor.ts";
+import { UnifiedAI, type UnifiedAIConfig, type LearningRecord } from "./unified-ai.ts";
 import { TuiController } from "./buddy-tui.tsx";
-import { ThreadManager, type ThreadManagerConfig } from "./thread-manager.ts";
 
 /**
  * Type guard to check if an IAtom has catalogId (is actually an ICard)
@@ -85,28 +84,30 @@ function getCardDisplayInfo(card: CatalogCard | undefined): { bp: string; color:
  * BuddyAgent configuration
  */
 export interface BuddyAgentConfig {
-  /** AI advisor configuration (optional) */
-  advisor?: AdvisorConfig;
+  /** AI configuration (optional) */
+  ai?: {
+    apiKey: string;
+    model?: string;
+  };
   /** Enable automatic evaluation of user moves */
   autoEvaluate?: boolean;
   /** Path to save/load learning records */
   learningRecordsPath?: string;
-  /** Thread manager configuration for real-time analysis (optional) */
-  threadManager?: ThreadManagerConfig;
 }
 
 /**
  * BuddyAgent - Allows user to control the agent via command line
- * With optional AI advisor for evaluation and advice
+ * With unified AI for analysis, advice, and evaluation
  */
 export class BuddyAgent implements Agent {
   private catalogLookup: (id: string) => CatalogCard | undefined;
   private tui: TuiController;
-  private advisor: AIAdvisor | null = null;
-  private threadManager: ThreadManager | null = null;
+  private ai: UnifiedAI | null = null;
   private autoEvaluate: boolean;
   private learningRecordsPath: string | null;
   private lastContext: DecisionContext | null = null;
+  private config?: BuddyAgentConfig;
+  private tuiStarted = false;
 
   constructor(
     private name: string,
@@ -122,9 +123,6 @@ export class BuddyAgent implements Agent {
     this.tui = new TuiController();
   }
 
-  private config?: BuddyAgentConfig;
-  private tuiStarted = false;
-
   /**
    * Start the TUI (called lazily on first use)
    */
@@ -134,30 +132,99 @@ export class BuddyAgent implements Agent {
 
     this.tui.start();
 
-    // Initialize AI advisor if API key provided
-    if (this.config?.advisor) {
-      this.advisor = new AIAdvisor(this.config.advisor, this.catalogLookup);
-      this.tui.addMessage("system", "AIアドバイザーを有効化しました");
+    // Initialize unified AI if API key provided
+    if (this.config?.ai) {
+      const aiConfig: UnifiedAIConfig = {
+        apiKey: this.config.ai.apiKey,
+        model: this.config.ai.model ?? "claude-3-5-haiku-20241022",
+        debounceMs: 1500,
+        onMessage: (message, type) => {
+          const prefix = type === "analysis" ? "--- AI分析 ---"
+            : type === "advice" ? "--- AIアドバイス ---"
+            : "--- AI評価 ---";
+          this.tui.addMessage("ai", prefix);
+          this.tui.addLines("ai", message);
+        },
+      };
+
+      this.ai = new UnifiedAI(aiConfig, this.catalogLookup);
+      this.tui.addMessage("system", "AI分析を有効化しました");
 
       // Load existing learning records
       if (this.learningRecordsPath) {
         this.loadLearningRecords();
       }
+
+      // Set up input callback for immediate comment processing
+      this.tui.onInput((command, wasQueued) => {
+        this.handleImmediateInput(command, wasQueued);
+      });
+    }
+  }
+
+  /**
+   * Handle input immediately (for comments during opponent's turn)
+   */
+  private handleImmediateInput(input: string, wasQueued: boolean): void {
+    if (!this.ai) return;
+
+    // Only process immediately if the command was queued (decideAction is not waiting)
+    if (!wasQueued) return;
+
+    // Handle /comment command immediately
+    if (input.startsWith("/comment ")) {
+      const comment = input.slice("/comment ".length).trim();
+      if (comment) {
+        this.ai.addPilotComment(comment).catch((err) => {
+          this.tui.addMessage("error", `コメント処理エラー: ${err}`);
+        });
+        this.tui.addMessage("user", `[パイロット] ${comment}`);
+      } else {
+        this.tui.addMessage("system", "Usage: /comment <your comment>");
+      }
+      this.tui.removeLastFromQueue();
+      return;
     }
 
-    // Initialize Thread Manager for real-time analysis
-    if (this.config?.threadManager) {
-      this.threadManager = new ThreadManager(
-        {
-          ...this.config.threadManager,
-          onAnalysis: (analysis) => {
-            this.tui.addMessage("ai", "--- リアルタイム分析 ---");
-            this.tui.addLines("ai", analysis);
-          },
-        },
-        this.catalogLookup
-      );
-      this.tui.addMessage("system", "リアルタイム分析を有効化しました");
+    // Handle /thread command immediately
+    if (input === "/thread") {
+      const thread = this.ai.getThread();
+      this.tui.addMessage("ai", "--- スレッド履歴 ---");
+      this.tui.addMessage("ai", `メッセージ数: ${thread.length}`);
+
+      if (thread.length > 0) {
+        this.tui.addMessage("ai", "最近のやり取り:");
+        const recentMessages = thread.slice(-6);
+        for (const msg of recentMessages) {
+          const roleLabel = msg.role === "user" ? "[入力]" : "[AI]";
+          const preview = msg.content.length > 100
+            ? msg.content.slice(0, 100) + "..."
+            : msg.content;
+          this.tui.addMessage("ai", `  ${roleLabel} ${preview}`);
+        }
+      }
+      this.tui.removeLastFromQueue();
+      return;
+    }
+
+    // Handle /clear command immediately
+    if (input === "/clear") {
+      this.ai.clearThread();
+      this.tui.addMessage("system", "スレッド履歴をクリアしました");
+      this.tui.removeLastFromQueue();
+      return;
+    }
+
+    // For non-command text that doesn't look like a game command,
+    // treat as pilot comment
+    const gameCommands = ["summon", "attack", "set", "boot", "withdraw", "override", "joker", "end", "choose", "decline", "state", "help"];
+    const firstWord = input.toLowerCase().split(/\s+/)[0];
+    if (firstWord && !input.startsWith("/") && !gameCommands.includes(firstWord)) {
+      this.ai.addPilotComment(input).catch((err) => {
+        this.tui.addMessage("error", `コメント処理エラー: ${err}`);
+      });
+      this.tui.addMessage("user", `[パイロット] ${input}`);
+      this.tui.removeLastFromQueue();
     }
   }
 
@@ -260,15 +327,12 @@ export class BuddyAgent implements Agent {
     this.tui.addMessage("system", "Options:");
     for (const item of choice.choices.items) {
       if (isItemWithBp(item)) {
-        // It's a unit
         const info = this.catalogLookup(item.catalogId);
         this.tui.addMessage("system", `  [${item.id}] ${info?.name ?? item.catalogId} BP:${item.bp}`);
       } else if (isItemWithCatalogId(item)) {
-        // It's a card
         const info = this.catalogLookup(item.catalogId);
         this.tui.addMessage("system", `  [${item.id}] ${info?.name ?? item.catalogId}`);
       } else if (isItemWithName(item)) {
-        // It's an option
         this.tui.addMessage("system", `  [${item.id}] ${item.name}`);
       }
     }
@@ -297,21 +361,17 @@ export class BuddyAgent implements Agent {
     this.tui.addMessage("system", "state                 - Redisplay game state");
     this.tui.addMessage("system", "help                  - Show this help");
 
-    // AI advisor commands
-    if (this.advisor) {
-      this.tui.addMessage("ai", "--- AI ADVISOR COMMANDS ---");
-      this.tui.addMessage("ai", "/think                - AI analyzes current situation");
-      this.tui.addMessage("ai", "/advice <action>      - Get advice for specific action");
-      this.tui.addMessage("ai", "/records              - Show learning records summary");
-      this.tui.addMessage("ai", "/save                 - Save learning records");
-    }
-
-    // Thread manager commands
-    if (this.threadManager) {
-      this.tui.addMessage("ai", "--- REALTIME ANALYSIS COMMANDS ---");
-      this.tui.addMessage("ai", "/comment <text>       - Add pilot comment to AI thread");
-      this.tui.addMessage("ai", "/thread               - Show AI thread summary");
-      this.tui.addMessage("ai", "/clear-thread         - Clear AI thread history");
+    // AI commands
+    if (this.ai) {
+      this.tui.addMessage("ai", "--- AI COMMANDS ---");
+      this.tui.addMessage("ai", "/think                - 状況を詳しく分析");
+      this.tui.addMessage("ai", "/advice <action>      - 特定アクションのアドバイス");
+      this.tui.addMessage("ai", "/comment <text>       - AIへコメント");
+      this.tui.addMessage("ai", "/thread               - スレッド履歴を表示");
+      this.tui.addMessage("ai", "/clear                - スレッド履歴をクリア");
+      this.tui.addMessage("ai", "/records              - 学習記録を表示");
+      this.tui.addMessage("ai", "/save                 - 学習記録を保存");
+      this.tui.addMessage("ai", "(テキスト入力でもAIへコメントできます)");
     }
   }
 
@@ -543,73 +603,25 @@ export class BuddyAgent implements Agent {
         return null; // These are handled separately
 
       default:
-        // Return null for unknown commands - they will be treated as pilot comments
         return null;
     }
   }
 
   /**
-   * Handle AI advisor commands
+   * Handle AI commands
    * Returns true if command was handled
    */
-  private async handleAdvisorCommand(input: string, context: DecisionContext): Promise<boolean> {
+  private async handleAICommand(input: string, _context: DecisionContext): Promise<boolean> {
+    if (!this.ai) return false;
+
     const parts = input.split(/\s+/);
     const command = parts[0]?.toLowerCase();
-
-    // Thread manager commands (can work without advisor)
-    if (this.threadManager) {
-      switch (command) {
-        case "/comment": {
-          const comment = parts.slice(1).join(" ");
-          if (!comment) {
-            this.tui.addMessage("system", "Usage: /comment <your comment>");
-            this.tui.addMessage("system", "Example: /comment この分析は違う、相手はアグロデッキだ");
-            return true;
-          }
-          this.threadManager.addPilotComment(comment);
-          this.tui.addMessage("user", `[パイロット] ${comment}`);
-          return true;
-        }
-
-        case "/thread": {
-          const thread = this.threadManager.getThread();
-          this.tui.addMessage("ai", "--- AIスレッド履歴 ---");
-          this.tui.addMessage("ai", `メッセージ数: ${thread.length}`);
-
-          if (thread.length > 0) {
-            this.tui.addMessage("ai", "最近のやり取り:");
-            const recentMessages = thread.slice(-6);
-            for (const msg of recentMessages) {
-              const roleLabel = msg.role === "user" ? "[状況/パイロット]" : "[AI]";
-              const preview = msg.content.length > 100
-                ? msg.content.slice(0, 100) + "..."
-                : msg.content;
-              this.tui.addMessage("ai", `  ${roleLabel} ${preview}`);
-            }
-          }
-          return true;
-        }
-
-        case "/clear-thread": {
-          this.threadManager.clearThread();
-          this.tui.addMessage("system", "AIスレッド履歴をクリアしました");
-          return true;
-        }
-      }
-    }
-
-    // AI advisor commands
-    if (!this.advisor) {
-      return false;
-    }
 
     switch (command) {
       case "/think": {
         this.tui.addMessage("ai", "状況を分析中...");
         try {
-          const analysis = await this.advisor.think(context);
-          this.tui.addMessage("ai", "--- AI分析結果 ---");
-          this.tui.addLines("ai", analysis);
+          await this.ai.requestAnalysis();
         } catch (error) {
           this.tui.addMessage("error", `分析エラー: ${error}`);
         }
@@ -625,17 +637,55 @@ export class BuddyAgent implements Agent {
         }
         this.tui.addMessage("ai", `「${actionType}」についてアドバイス中...`);
         try {
-          const advice = await this.advisor.getAdviceFor(context, actionType);
-          this.tui.addMessage("ai", "--- AIアドバイス ---");
-          this.tui.addLines("ai", advice);
+          await this.ai.requestAdvice(actionType);
         } catch (error) {
           this.tui.addMessage("error", `アドバイスエラー: ${error}`);
         }
         return true;
       }
 
+      case "/comment": {
+        const comment = parts.slice(1).join(" ");
+        if (!comment) {
+          this.tui.addMessage("system", "Usage: /comment <your comment>");
+          return true;
+        }
+        this.tui.addMessage("user", `[パイロット] ${comment}`);
+        try {
+          await this.ai.addPilotComment(comment);
+        } catch (error) {
+          this.tui.addMessage("error", `コメント処理エラー: ${error}`);
+        }
+        return true;
+      }
+
+      case "/thread": {
+        const thread = this.ai.getThread();
+        this.tui.addMessage("ai", "--- スレッド履歴 ---");
+        this.tui.addMessage("ai", `メッセージ数: ${thread.length}`);
+
+        if (thread.length > 0) {
+          this.tui.addMessage("ai", "最近のやり取り:");
+          const recentMessages = thread.slice(-6);
+          for (const msg of recentMessages) {
+            const roleLabel = msg.role === "user" ? "[入力]" : "[AI]";
+            const preview = msg.content.length > 100
+              ? msg.content.slice(0, 100) + "..."
+              : msg.content;
+            this.tui.addMessage("ai", `  ${roleLabel} ${preview}`);
+          }
+        }
+        return true;
+      }
+
+      case "/clear": {
+        this.ai.clearThread();
+        this.tui.addMessage("system", "スレッド履歴をクリアしました");
+        return true;
+      }
+
       case "/records": {
-        const records = this.advisor.getLearningRecords();
+        const records = this.ai.getLearningRecords();
         this.tui.addMessage("ai", "--- 学習記録サマリー ---");
         this.tui.addMessage("ai", `総記録数: ${records.length}`);
 
@@ -649,7 +699,7 @@ export class BuddyAgent implements Agent {
           for (const record of recentRecords) {
             const scoreIcon = record.score > 0 ? "◎" : record.score < 0 ? "×" : "○";
             this.tui.addMessage("ai", `  ${scoreIcon} ${record.situation} - ${record.userAction}`);
-            this.tui.addMessage("ai", `    → ${record.reasoning}`);
+            this.tui.addMessage("ai", `    → ${record.reasoning.slice(0, 50)}...`);
           }
         }
         return true;
@@ -672,8 +722,11 @@ export class BuddyAgent implements Agent {
     // Ensure TUI is started
     this.ensureTuiStarted();
 
-    // Store context for evaluation
+    // Store context for AI
     this.lastContext = context;
+    if (this.ai) {
+      this.ai.setContext(context);
+    }
 
     // Display game state
     this.displayGameState(context);
@@ -707,13 +760,12 @@ export class BuddyAgent implements Agent {
         continue;
       }
 
-      // Handle AI advisor commands (starting with /)
+      // Handle AI commands (starting with /)
       if (input.startsWith("/")) {
-        const handled = await this.handleAdvisorCommand(input, context);
+        const handled = await this.handleAICommand(input, context);
         if (handled) {
           continue;
         }
-        // Unknown slash command - show error
         this.tui.addMessage("error", `Unknown command: ${input.split(/\s+/)[0]}`);
         continue;
       }
@@ -721,37 +773,26 @@ export class BuddyAgent implements Agent {
       const action = this.parseCommand(input, context);
       if (action) {
         // Evaluate the action if auto-evaluate is enabled
-        if (this.autoEvaluate && this.advisor) {
-          this.evaluateUserAction(context, action).catch((err) => {
+        if (this.autoEvaluate && this.ai) {
+          const description = this.describeAction(action, context);
+          this.ai.evaluateAction(action.type, description).catch((err) => {
             this.tui.addMessage("error", `評価エラー: ${err}`);
           });
         }
         return action;
       }
 
-      // Input is not a game command - treat as pilot comment
-      if (this.threadManager) {
-        this.threadManager.addPilotComment(input);
+      // Input is not a game command - treat as pilot comment if AI is enabled
+      if (this.ai) {
         this.tui.addMessage("user", `[パイロット] ${input}`);
+        this.ai.addPilotComment(input).catch((err) => {
+          this.tui.addMessage("error", `コメント処理エラー: ${err}`);
+        });
+        continue;
       } else {
-        // No thread manager - show as unknown command
         this.tui.addMessage("error", `Unknown command: ${input.split(/\s+/)[0]}`);
         this.tui.addMessage("system", "Type 'help' for available commands");
       }
-    }
-  }
-
-  /**
-   * Evaluate user's action asynchronously
-   */
-  private async evaluateUserAction(context: DecisionContext, action: ParsedAction): Promise<void> {
-    if (!this.advisor) return;
-
-    const actionDescription = this.describeAction(action, context);
-    const result = await this.advisor.evaluateAndRecord(context, action.type, actionDescription);
-
-    if (result.recorded) {
-      this.tui.addMessage("ai", `[評価] ${result.evaluation} (記録済み)`);
     }
   }
 
@@ -904,7 +945,7 @@ export class BuddyAgent implements Agent {
    * Load learning records from file
    */
   private loadLearningRecords(): void {
-    if (!this.learningRecordsPath || !this.advisor) return;
+    if (!this.learningRecordsPath || !this.ai) return;
 
     try {
       const file = Bun.file(this.learningRecordsPath);
@@ -914,15 +955,16 @@ export class BuddyAgent implements Agent {
           if (Array.isArray(parsed)) {
             const validRecords = parsed.filter((item): item is LearningRecord => this.isLearningRecord(item));
             if (validRecords.length > 0) {
-              this.advisor?.loadRecords(validRecords);
+              this.ai?.loadRecords(validRecords);
+              this.tui.addMessage("system", `${validRecords.length}件の学習記録を読み込みました`);
             }
           }
         }).catch(() => {
-          // File doesn't exist or is empty, start fresh
+          // File doesn't exist or is empty
         });
       }
     } catch {
-      // File doesn't exist, start fresh
+      // File doesn't exist
     }
   }
 
@@ -930,13 +972,13 @@ export class BuddyAgent implements Agent {
    * Save learning records to file
    */
   private async saveLearningRecords(): Promise<void> {
-    if (!this.learningRecordsPath || !this.advisor) {
+    if (!this.learningRecordsPath || !this.ai) {
       this.tui.addMessage("system", "保存パスが設定されていません");
       return;
     }
 
     try {
-      const records = this.advisor.getLearningRecords();
+      const records = this.ai.getLearningRecords();
       await Bun.write(this.learningRecordsPath, JSON.stringify(records, null, 2));
       this.tui.addMessage("system", `学習記録を保存しました: ${this.learningRecordsPath}`);
     } catch (error) {
@@ -945,17 +987,10 @@ export class BuddyAgent implements Agent {
   }
 
   /**
-   * Get AI advisor (for external access)
+   * Get unified AI (for external access)
    */
-  getAdvisor(): AIAdvisor | null {
-    return this.advisor;
-  }
-
-  /**
-   * Get Thread Manager (for external access)
-   */
-  getThreadManager(): ThreadManager | null {
-    return this.threadManager;
+  getAI(): UnifiedAI | null {
+    return this.ai;
   }
 
   /**
@@ -966,22 +1001,22 @@ export class BuddyAgent implements Agent {
   }
 
   /**
-   * Push game state update to thread manager
+   * Push game state update to AI
    * Call this when Sync message is received
    */
   pushGameStateUpdate(gameState: GameState): void {
-    if (this.threadManager) {
-      this.threadManager.pushSyncDiff(gameState);
+    if (this.ai) {
+      this.ai.pushGameStateUpdate(gameState, this.lastContext ?? undefined);
     }
   }
 
   /**
-   * Push game event to thread manager
+   * Push game event to AI
    * Call this when a game event (card effect, etc.) occurs
    */
   pushGameEvent(event: string): void {
-    if (this.threadManager) {
-      this.threadManager.pushGameEvent(event);
+    if (this.ai) {
+      this.ai.pushGameEvent(event);
     }
   }
 
@@ -990,15 +1025,15 @@ export class BuddyAgent implements Agent {
    */
   clearHistory(): void {
     // Save learning records before cleanup
-    if (this.advisor && this.learningRecordsPath) {
+    if (this.ai && this.learningRecordsPath) {
       this.saveLearningRecords().catch(() => {
         // Ignore errors during cleanup
       });
     }
 
-    // Clear thread manager
-    if (this.threadManager) {
-      this.threadManager.clearThread();
+    // Clear AI thread
+    if (this.ai) {
+      this.ai.clearThread();
     }
 
     // Stop TUI only if it was started

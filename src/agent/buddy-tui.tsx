@@ -132,7 +132,7 @@ function BuddyTuiApp({
  */
 export class TuiController {
   private messages: TuiMessage[] = [];
-  private inputCallback: ((command: string) => void) | null = null;
+  private inputCallback: ((command: string, wasQueued: boolean) => void) | null = null;
   private inputResolve: ((command: string) => void) | null = null;
   private commandQueue: string[] = [];
   private prompt: string = ">";
@@ -186,6 +186,9 @@ export class TuiController {
     // Add user message to log
     this.addMessage("user", command);
 
+    // Track if command was queued (not immediately resolved)
+    let wasQueued = false;
+
     // If there's a pending readLine, resolve it immediately
     if (this.inputResolve) {
       const resolve = this.inputResolve;
@@ -194,10 +197,11 @@ export class TuiController {
     } else {
       // Otherwise queue the command for later
       this.commandQueue.push(command);
+      wasQueued = true;
     }
 
     if (this.inputCallback) {
-      this.inputCallback(command);
+      this.inputCallback(command, wasQueued);
     }
   }
 
@@ -271,8 +275,9 @@ export class TuiController {
 
   /**
    * Set callback for input (alternative to readLine)
+   * @param callback - Receives command and wasQueued flag (true if not immediately resolved by readLine)
    */
-  onInput(callback: (command: string) => void): void {
+  onInput(callback: (command: string, wasQueued: boolean) => void): void {
     this.inputCallback = callback;
   }
 
@@ -303,5 +308,12 @@ export class TuiController {
    */
   clearQueue(): void {
     this.commandQueue = [];
+  }
+
+  /**
+   * Remove the last command from the queue (used when handling commands immediately)
+   */
+  removeLastFromQueue(): void {
+    this.commandQueue.pop();
   }
 }
