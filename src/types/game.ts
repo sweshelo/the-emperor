@@ -7,6 +7,7 @@ import type { IPlayer, IUnit, ICard, IDelta, Rule } from "../../suit/types/index
 import type { Message, Action } from "../../suit/types/message/message.ts";
 import type {
   Payload,
+  PlayerEntryPayload,
   DebugMakePayload,
   DebugDrivePayload,
   DebugDrawPayload,
@@ -94,6 +95,7 @@ export type ClientMessage = Message<ClientPayload>;
  * All client payload types
  */
 export type ClientPayload =
+  | PlayerEntryPayload
   | DebugMakePayload
   | DebugDrivePayload
   | DebugDrawPayload
@@ -115,6 +117,7 @@ export type ClientPayload =
  * Re-export payload types for convenience
  */
 export type {
+  PlayerEntryPayload,
   DebugMakePayload,
   DebugDrivePayload,
   DebugDrawPayload,

@@ -3,8 +3,59 @@
  */
 
 import type { GameWebSocketClient } from "../../src/websocket/client.ts";
-import type { DebugMakePayload, UnitDrivePayload, ClientMessage } from "../../src/types/game.ts";
+import type { PlayerEntryPayload, DebugMakePayload, UnitDrivePayload, ClientMessage } from "../../src/types/game.ts";
 import type { IAtom } from "../../suit/types/index.ts";
+
+/**
+ * Send PlayerEntry message to register as a player in the room
+ *
+ * @param wsClient WebSocket client
+ * @param roomId Room ID
+ * @param playerId Player ID
+ * @param playerName Player name
+ * @param deck Player deck (array of catalog IDs)
+ * @param jokersOwned Optional joker cards owned by the player
+ *
+ * Note: This must be called after WebSocket connection and before game actions.
+ * Without player registration, the server won't send game state updates.
+ */
+export function playerEntry(
+  wsClient: GameWebSocketClient,
+  roomId: string,
+  playerId: string,
+  playerName: string,
+  deck: string[] = [],
+  jokersOwned: string[] = []
+): void {
+  if (!wsClient.isConnected()) {
+    throw new Error("WebSocket is not connected");
+  }
+
+  const message: ClientMessage = {
+    action: {
+      type: "join",
+      handler: "room",
+    },
+    payload: {
+      type: "PlayerEntry",
+      roomId,
+      player: {
+        id: playerId,
+        name: playerName,
+        deck,
+      },
+      jokersOwned,
+    },
+  };
+
+  try {
+    wsClient.send(message);
+    console.log(`[PlayerEntry] Registered player: ${playerName} (${playerId}) in room ${roomId}`);
+  } catch (error) {
+    console.error("[PlayerEntry] Failed to register player:", error);
+    throw error;
+  }
+}
 
 /**
  * Send DebugMake action to create a card

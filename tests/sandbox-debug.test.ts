@@ -122,18 +122,34 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
       });
 
       await wsClient.connect();
-
-      // Wait for messages
       await new Promise((resolve) => setTimeout(resolve, 500));
 
+      // Get player info and register
+      const playerIds = getPlayerIds(debugState);
+      const playerId = playerIds[0];
+      const playerInfo = debugState.players[playerId];
+
+      const { playerEntry } = await import("./helpers/debug-actions.ts");
+      playerEntry(
+        wsClient,
+        "99999",
+        playerId,
+        playerInfo.name,
+        playerInfo.deck?.map((card: any) => card.catalogId) || [],
+        []
+      );
+
+      // Wait for Sync messages after registration
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       // Check if we received Sync messages
-      const syncMessages = receivedMessages.filter((m) => m.type === "Sync");
+      const syncMessages = receivedMessages.filter((m) => m.payload?.type === "Sync");
       expect(syncMessages.length).toBeGreaterThan(0);
 
       if (syncMessages.length > 0) {
         const syncMsg = syncMessages[0] as any;
         console.log("✓ Received Sync message");
-        console.log(`  Debug mode enabled: ${syncMsg.body?.rule?.debug?.enable}`);
+        console.log(`  Debug mode enabled: ${syncMsg.payload?.body?.rule?.debug?.enable}`);
       }
     } catch (error) {
       console.error("Test failed:", error);
@@ -177,7 +193,7 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
       await wsClient.connect();
       await new Promise((resolve) => setTimeout(resolve, 500));
 
-      // Get player ID
+      // Get player ID and info from state
       const playerIds = getPlayerIds(debugState);
       const playerId = playerIds[0];
 
@@ -185,15 +201,30 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
         throw new Error("No player ID found");
       }
 
-      console.log(`Player ID: ${playerId}`);
+      const playerInfo = debugState.players[playerId];
+      console.log(`Player: ${playerInfo.name} (${playerId})`);
+
+      // Import helpers
+      const { playerEntry, debugMakeCard } = await import("./helpers/debug-actions.ts");
+
+      // Register as a player in the room
+      console.log("Registering player...");
+      playerEntry(
+        wsClient,
+        "99999", // Sandbox room ID
+        playerId,
+        playerInfo.name,
+        playerInfo.deck?.map((card: any) => card.catalogId) || [],
+        []
+      );
+
+      // Wait for initial Sync after player registration
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Record hand size before DebugMake
       const beforeSync = syncMessages[syncMessages.length - 1];
       const beforeHand = beforeSync?.payload?.body?.players?.[playerId]?.hand || [];
       console.log(`  Hand size before DebugMake: ${beforeHand.length}`);
-
-      // Import and use debugMakeCard helper
-      const { debugMakeCard } = await import("./helpers/debug-actions.ts");
 
       // Send DebugMake action to create ブロックナイト (1-1-018)
       debugMakeCard(wsClient, playerId, TEST_CARD_ID);
@@ -258,7 +289,7 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
       await wsClient.connect();
       await new Promise((resolve) => setTimeout(resolve, 500));
 
-      // Get player ID
+      // Get player ID and info
       const playerIds = getPlayerIds(debugState);
       const playerId = playerIds[0];
 
@@ -266,8 +297,24 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
         throw new Error("No player ID found");
       }
 
+      const playerInfo = debugState.players[playerId];
+
       // Import helpers
-      const { debugMakeCard, unitDrive, verifyCardAddedToHand } = await import("./helpers/debug-actions.ts");
+      const { playerEntry, debugMakeCard, unitDrive, verifyCardAddedToHand } = await import("./helpers/debug-actions.ts");
+
+      // Register as a player
+      console.log(`Registering player: ${playerInfo.name}`);
+      playerEntry(
+        wsClient,
+        "99999",
+        playerId,
+        playerInfo.name,
+        playerInfo.deck?.map((card: any) => card.catalogId) || [],
+        []
+      );
+
+      // Wait for initial Sync
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       console.log("\n=== Test Flow: DebugMake → UnitDrive → Verify Effect ===");
 
@@ -370,6 +417,23 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
       });
 
       await wsClient.connect();
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Register player
+      const playerIds = getPlayerIds(debugState);
+      const playerId = playerIds[0];
+      const playerInfo = debugState.players[playerId];
+
+      const { playerEntry } = await import("./helpers/debug-actions.ts");
+      playerEntry(
+        wsClient,
+        "99999",
+        playerId,
+        playerInfo.name,
+        playerInfo.deck?.map((card: any) => card.catalogId) || [],
+        []
+      );
+
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       console.log("Message sequence received:");
