@@ -25,5 +25,7 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false
-  }
+  },
+  "include": ["src/**/*", "suit/types/**/*", "suit/catalog/**/*", "suit/constant/**/*"],
+  "exclude": ["node_modules", "the-fool", "the-magician", "dist", "build"]
 }

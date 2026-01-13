@@ -1,0 +1,9 @@
+[submodule "suit"]
+	path = suit
+	url = https://github.com/sweshelo/suit.git
+[submodule "the-fool"]
+	path = the-fool
+	url = https://github.com/sweshelo/the-fool.git
+[submodule "the-magician"]
+	path = the-magician
+	url = https://github.com/sweshelo/the-magician.git
