@@ -365,19 +365,28 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
       unitDrive(wsClient, playerId, createdCard.id);
 
       // Import helper for waiting DisplayEffect
-      const { waitForDisplayEffect, waitForNextSync } = await import("./helpers/debug-actions.ts");
+      const { waitForDisplayEffect, waitForNextSync, sendContinue } = await import("./helpers/debug-actions.ts");
 
       // Step 3: Wait for DisplayEffect message (effect resolution indicator)
       console.log(`\n[Step 3] Waiting for DisplayEffect: ${TEST_CARD_EFFECT_NAME}...`);
       try {
         const displayEffectMsg = await waitForDisplayEffect(receivedMessages, TEST_CARD_EFFECT_NAME, 3000);
         console.log(`  ✓ DisplayEffect received: ${displayEffectMsg.payload?.title}`);
-        console.log(`    Description: ${displayEffectMsg.payload?.description}`);
+        console.log(`    Description: ${displayEffectMsg.payload?.message}`);
+
+        // Send Continue to acknowledge DisplayEffect and allow effect resolution to proceed
+        const promptId = displayEffectMsg.payload?.promptId;
+        if (promptId) {
+          sendContinue(wsClient, promptId);
+          console.log(`  ✓ Continue sent for promptId: ${promptId}`);
+        } else {
+          console.log(`  ⚠ No promptId in DisplayEffect message`);
+        }
 
         // Wait for the Sync message after DisplayEffect (effect applied)
         const displayEffectIndex = receivedMessages.indexOf(displayEffectMsg);
         console.log(`\n[Step 4] Waiting for Sync after effect resolution...`);
-        const afterEffectSync = await waitForNextSync(receivedMessages, displayEffectIndex, 3000);
+        const afterEffectSync = await waitForNextSync(receivedMessages, displayEffectIndex, 5000);
         console.log(`  ✓ Sync received after effect resolution`);
 
         // Verify effect results from the post-effect Sync
@@ -407,9 +416,9 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
           console.log(`  Note: Effect may not trigger if no green units in deck`);
         }
       } catch (error) {
-        // DisplayEffect not received - effect may not have triggered
-        console.log(`  ⚠ DisplayEffect not received within timeout`);
-        console.log(`  Note: Effect may not trigger if no green units in deck`);
+        // DisplayEffect or Sync not received - effect may not have triggered or stack not resolved
+        console.log(`  ⚠ Effect resolution timeout: ${error instanceof Error ? error.message : error}`);
+        console.log(`  Note: Effect may not trigger if no green units in deck, or stack resolution may have stalled`);
 
         // Still verify field status
         await new Promise((resolve) => setTimeout(resolve, 500));

@@ -7,6 +7,41 @@ import type { PlayerEntryPayload, DebugMakePayload, UnitDrivePayload, ClientMess
 import type { IAtom } from "../../suit/types/index.ts";
 
 /**
+ * Send Continue message to acknowledge DisplayEffect
+ * This is required because System.show() waits for a client response
+ *
+ * @param wsClient WebSocket client
+ * @param promptId The prompt ID from the DisplayEffect message
+ */
+export function sendContinue(
+  wsClient: GameWebSocketClient,
+  promptId: string
+): void {
+  if (!wsClient.isConnected()) {
+    throw new Error("WebSocket is not connected");
+  }
+
+  const message: ClientMessage = {
+    action: {
+      type: "continue",
+      handler: "core",
+    },
+    payload: {
+      type: "Continue",
+      promptId,
+    },
+  };
+
+  try {
+    wsClient.send(message);
+    console.log(`[Continue] Sent for promptId: ${promptId}`);
+  } catch (error) {
+    console.error("[Continue] Failed to send:", error);
+    throw error;
+  }
+}
+
+/**
  * Send PlayerEntry message to register as a player in the room
  *
  * @param wsClient WebSocket client
