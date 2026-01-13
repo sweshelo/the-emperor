@@ -6,6 +6,7 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "preinstall": "git submodule update --init --recursive",
     "dev": "bun run --watch src/index.ts",
     "start": "bun run src/index.ts",
     "mcp": "bun run src/mcp/server.ts",
