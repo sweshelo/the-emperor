@@ -5,6 +5,7 @@
 import type { Agent, ParsedAction } from "../types/agent.ts";
 import type {
   ServerMessage,
+  ClientMessage,
   GameState,
   ChoicesMessage,
 } from "../types/game.ts";
@@ -171,6 +172,7 @@ export class GameController {
 
       default:
         console.log(`[Controller] Unhandled message type: ${payloadType}`);
+        console.error(message)
     }
   }
 
@@ -273,18 +275,25 @@ export class GameController {
     const roomId = this.config.roomId ?? "default";
     const deck = this.config.deck ?? [];
 
-    const payload = {
-      type: "PlayerEntry" as const,
-      roomId,
-      player: {
-        id: this.config.playerId,
-        name: this.config.playerName,
-        deck,
+    // PlayerEntry must use handler: "room" for server-side room.join() processing
+    const message: ClientMessage = {
+      action: {
+        type: "join",
+        handler: "room",
+      },
+      payload: {
+        type: "PlayerEntry",
+        roomId,
+        player: {
+          id: this.config.playerId,
+          name: this.config.playerName,
+          deck,
+        },
       },
     };
 
     console.log(`[Controller] Sending player entry: ${this.config.playerName} to room ${roomId}`);
-    this.wsClient.sendMcpAction(payload);
+    this.wsClient.send(message);
   }
 
   /**
