@@ -4,6 +4,26 @@
  */
 
 import type { IPlayer, IUnit, ICard, IDelta, Rule } from "../../suit/types/index.ts";
+import type { Message, Action } from "../../suit/types/message/message.ts";
+import type {
+  Payload,
+  DebugMakePayload,
+  DebugDrivePayload,
+  DebugDrawPayload,
+  UnitDrivePayload,
+  EvolveDrivePayload,
+  JokerDrivePayload,
+  TriggerSetPayload,
+  OverridePayload,
+  AttackPayload,
+  BlockPayload,
+  BootPayload,
+  WithdrawalPayload,
+  DiscardPayload,
+  ChoosePayload,
+  ContinuePayload,
+  MulliganPayload,
+} from "../../suit/types/message/payload/index.ts";
 
 /**
  * Game state synchronized from server
@@ -21,13 +41,9 @@ export interface GameState {
 
 /**
  * WebSocket message types from server
+ * Messages have structure: { action: Action, payload: Payload }
  */
-export type ServerMessage =
-  | SyncMessage
-  | ChoicesMessage
-  | TurnChangeMessage
-  | MulliganStartMessage
-  | OperationMessage;
+export type ServerMessage = Message<Payload>;
 
 export interface SyncMessage {
   type: "Sync";
@@ -70,101 +86,52 @@ export interface Option {
 
 /**
  * Client action types
+ * Messages have structure: { action: Action, payload: Payload }
  */
-export type ClientAction =
-  | UnitDriveAction
-  | EvolveDriveAction
-  | JokerDriveAction
-  | TriggerSetAction
-  | OverrideAction
-  | AttackAction
-  | BlockAction
-  | BootAction
-  | WithdrawalAction
-  | DiscardAction
-  | ChooseAction
-  | ContinueAction
-  | MulliganAction;
+export type ClientMessage = Message<ClientPayload>;
 
-export interface UnitDriveAction {
-  type: "UnitDrive";
-  player: string;
-  target: { id: string };
-}
+/**
+ * All client payload types
+ */
+export type ClientPayload =
+  | DebugMakePayload
+  | DebugDrivePayload
+  | DebugDrawPayload
+  | UnitDrivePayload
+  | EvolveDrivePayload
+  | JokerDrivePayload
+  | TriggerSetPayload
+  | OverridePayload
+  | AttackPayload
+  | BlockPayload
+  | BootPayload
+  | WithdrawalPayload
+  | DiscardPayload
+  | ChoosePayload
+  | ContinuePayload
+  | MulliganPayload;
 
-export interface EvolveDriveAction {
-  type: "EvolveDrive";
-  player: string;
-  target: { id: string };
-  source: { id: string };
-}
-
-export interface JokerDriveAction {
-  type: "JokerDrive";
-  player: string;
-  target: { id: string };
-}
-
-export interface TriggerSetAction {
-  type: "TriggerSet";
-  player: string;
-  target: { id: string; catalogId: string };
-}
-
-export interface OverrideAction {
-  type: "Override";
-  player: string;
-  target: { id: string };
-  parent: { id: string };
-}
-
-export interface AttackAction {
-  type: "Attack";
-  player: string;
-  target: { id: string };
-}
-
-export interface BlockAction {
-  type: "Block";
-  player: string;
-  target: { id: string };
-}
-
-export interface BootAction {
-  type: "Boot";
-  player: string;
-  target: { id: string };
-}
-
-export interface WithdrawalAction {
-  type: "Withdrawal";
-  player: string;
-  target: { id: string };
-}
-
-export interface DiscardAction {
-  type: "Discard";
-  player: string;
-  target: { id: string; catalogId: string };
-}
-
-export interface ChooseAction {
-  type: "Choose";
-  promptId: string;
-  choice: string[] | undefined;
-}
-
-export interface ContinueAction {
-  type: "Continue";
-  promptId: string;
-  player: string;
-}
-
-export interface MulliganAction {
-  type: "Mulligan";
-  action: "done" | "retry";
-  player: string;
-}
+/**
+ * Re-export payload types for convenience
+ */
+export type {
+  DebugMakePayload,
+  DebugDrivePayload,
+  DebugDrawPayload,
+  UnitDrivePayload,
+  EvolveDrivePayload,
+  JokerDrivePayload,
+  TriggerSetPayload,
+  OverridePayload,
+  AttackPayload,
+  BlockPayload,
+  BootPayload,
+  WithdrawalPayload,
+  DiscardPayload,
+  ChoosePayload,
+  ContinuePayload,
+  MulliganPayload,
+};
 
 /**
  * Color enumeration

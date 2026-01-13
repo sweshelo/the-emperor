@@ -3,57 +3,82 @@
  */
 
 import type { GameWebSocketClient } from "../../src/websocket/client.ts";
-
-/**
- * DebugMake action structure (based on expected implementation)
- * TODO: Update this structure when the actual API is confirmed
- */
-export interface DebugMakeAction {
-  type: "DebugMake";
-  player: string;
-  catalogId: string;
-  destination?: "hand" | "field" | "deck";
-  level?: number;
-}
+import type { DebugMakePayload, UnitDrivePayload, ClientMessage } from "../../src/types/game.ts";
+import type { IAtom } from "../../suit/types/index.ts";
 
 /**
  * Send DebugMake action to create a card
  *
  * @param wsClient WebSocket client
  * @param playerId Player ID
- * @param catalogId Card catalog ID
- * @param destination Where to place the card (default: "hand")
- * @param level Card level (default: 1)
+ * @param catalogId Card catalog ID (e.g., "1-1-018")
  *
- * @throws Error if DebugMake is not yet implemented on server
+ * Note: DebugMake creates the card and adds it to the player's hand automatically.
+ * The server determines where to place the card based on internal logic.
  */
-export async function debugMakeCard(
+export function debugMakeCard(
   wsClient: GameWebSocketClient,
   playerId: string,
-  catalogId: string,
-  destination: "hand" | "field" | "deck" = "hand",
-  level: number = 1
-): Promise<void> {
+  catalogId: string
+): void {
   if (!wsClient.isConnected()) {
     throw new Error("WebSocket is not connected");
   }
 
-  // TODO: Remove this check when DebugMake is implemented
-  console.warn("⚠️ DebugMake action structure is tentative. May need updates when API is finalized.");
-
-  const action: DebugMakeAction = {
-    type: "DebugMake",
-    player: playerId,
-    catalogId,
-    destination,
-    level,
+  const message: ClientMessage = {
+    action: {
+      type: "debug",
+      handler: "core", // handler is required for proper message routing
+    },
+    payload: {
+      type: "DebugMake",
+      player: playerId,
+      catalogId,
+    },
   };
 
   try {
-    wsClient.send(action as any);
-    console.log(`[DebugMake] Card created: ${catalogId} → ${destination}`);
+    wsClient.send(message);
+    console.log(`[DebugMake] Creating card: ${catalogId} for player: ${playerId}`);
   } catch (error) {
     console.error("[DebugMake] Failed to create card:", error);
+    throw error;
+  }
+}
+
+/**
+ * Send UnitDrive action to summon a card from hand to field
+ *
+ * @param wsClient WebSocket client
+ * @param playerId Player ID
+ * @param cardId Card ID in hand to summon
+ */
+export function unitDrive(
+  wsClient: GameWebSocketClient,
+  playerId: string,
+  cardId: string
+): void {
+  if (!wsClient.isConnected()) {
+    throw new Error("WebSocket is not connected");
+  }
+
+  const message: ClientMessage = {
+    action: {
+      type: "game",
+      handler: "core",
+    },
+    payload: {
+      type: "UnitDrive",
+      player: playerId,
+      target: { id: cardId },
+    },
+  };
+
+  try {
+    wsClient.send(message);
+    console.log(`[UnitDrive] Summoning card: ${cardId} for player: ${playerId}`);
+  } catch (error) {
+    console.error("[UnitDrive] Failed to summon card:", error);
     throw error;
   }
 }
@@ -74,7 +99,7 @@ export async function waitForMessage(
   const startTime = Date.now();
 
   while (Date.now() - startTime < timeout) {
-    const message = messages.find((m) => m.type === messageType);
+    const message = messages.find((m) => m.payload?.type === messageType);
     if (message) {
       return message;
     }
@@ -110,9 +135,10 @@ export async function waitForCondition(
 
 /**
  * Extract player state from Sync message
+ * Note: syncMessage should be the full Message with action and payload
  */
 export function extractPlayerState(syncMessage: any, playerId: string) {
-  return syncMessage.body?.players?.[playerId];
+  return syncMessage.payload?.body?.players?.[playerId];
 }
 
 /**
@@ -165,6 +191,7 @@ export function compareFieldSize(
 
 /**
  * Verify card effect: Check if a card was added to hand
+ * Note: Sync messages should be the full Message with action and payload
  */
 export function verifyCardAddedToHand(
   beforeSync: any,
@@ -176,8 +203,8 @@ export function verifyCardAddedToHand(
   addedCards: any[];
   message: string;
 } {
-  const beforeHand = beforeSync.body?.players?.[playerId]?.hand || [];
-  const afterHand = afterSync.body?.players?.[playerId]?.hand || [];
+  const beforeHand = beforeSync.payload?.body?.players?.[playerId]?.hand || [];
+  const afterHand = afterSync.payload?.body?.players?.[playerId]?.hand || [];
 
   // Find new cards (cards in after but not in before)
   const beforeIds = new Set(beforeHand.map((card: any) => card.id));
@@ -215,11 +242,12 @@ export function verifyCardAddedToHand(
 
 /**
  * Debug helper: Print current game state summary
+ * Note: syncMessage should be the full Message with action and payload
  */
 export function printGameStateSummary(syncMessage: any, title: string = "Game State") {
   console.log(`\n=== ${title} ===`);
 
-  const players = syncMessage.body?.players;
+  const players = syncMessage.payload?.body?.players;
   if (!players) {
     console.log("No player data available");
     return;
@@ -234,6 +262,6 @@ export function printGameStateSummary(syncMessage: any, title: string = "Game St
     console.log(`  Deck: ${player.deck?.length || 0} cards`);
   });
 
-  console.log(`\nGame: Round ${syncMessage.body?.game?.round}, Turn ${syncMessage.body?.game?.turn}`);
+  console.log(`\nGame: Round ${syncMessage.payload?.body?.game?.round}, Turn ${syncMessage.payload?.body?.game?.turn}`);
   console.log("=".repeat(title.length + 8));
 }

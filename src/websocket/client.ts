@@ -2,7 +2,7 @@
  * WebSocket client for CODE OF JOKER game server
  */
 
-import type { ServerMessage, ClientAction } from "../types/game.ts";
+import type { ServerMessage, ClientMessage } from "../types/game.ts";
 
 export type MessageHandler = (message: ServerMessage) => void;
 export type ErrorHandler = (error: Error) => void;
@@ -110,15 +110,15 @@ export class GameWebSocketClient {
   }
 
   /**
-   * Send an action to the server
+   * Send a message to the server
    */
-  send(action: ClientAction): void {
+  send(message: ClientMessage): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       throw new Error("WebSocket is not connected");
     }
 
-    const payload = JSON.stringify(action);
-    console.log("[WebSocket] Sending:", action.type);
+    const payload = JSON.stringify(message);
+    console.log("[WebSocket] Sending:", message.payload.type);
     this.ws.send(payload);
   }
 

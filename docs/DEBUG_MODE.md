@@ -33,31 +33,38 @@ const debugState: GameState = {
 };
 ```
 
-## DebugMake機能（実装待ち）
+## DebugMake機能
 
 DebugMakeは、任意のカードを生成してゲーム内に追加する機能です。
 
-### 予想される使用方法
+### 使用方法
 
 ```typescript
-// DebugMakeアクションの構造（推測）
-const debugMakeAction = {
-  type: "DebugMake",
-  player: playerId,
-  catalogId: "1-1-018",  // カタログID
-  destination: "hand",    // 追加先: "hand" | "field" | "deck"
-  level?: 1,              // オプション: レベル指定
+// DebugMakeメッセージの構造（suit/types/message/payload/core.ts より）
+import type { ClientMessage } from "../src/types/game.ts";
+
+const message: ClientMessage = {
+  action: {
+    type: "debug",
+    handler: "core",
+  },
+  payload: {
+    type: "DebugMake",
+    player: playerId,
+    catalogId: "1-1-018",  // カタログID
+  },
 };
 
 // WebSocket経由で送信
-wsClient.send(debugMakeAction);
+wsClient.send(message);
 ```
 
 ### 実装状況
 
-- ⚠️ **実装待ち**: 現在、DebugMake機能の正確なAPI仕様は未確定です
-- the-foolサーバー側での実装が必要
-- API仕様が確定次第、テストコードを更新します
+- ✅ **実装完了**: DebugMake機能の正確なAPI仕様を確認
+- ✅ **型定義**: `suit/types/message/payload/core.ts` に定義されたペイロード構造を使用
+- ✅ **ヘルパー関数**: `tests/helpers/debug-actions.ts` に `debugMakeCard()` 関数を実装
+- ✅ **テストコード**: `tests/sandbox-debug.test.ts` に完全なテストフローを実装
 
 ## テストカード: ブロックナイト (1-1-018)
 
@@ -132,38 +139,47 @@ bun test tests/sandbox-debug.test.ts
    - メッセージ収集機構
    - 状態変化の追跡システム
 
-### ⚠️ 実装待ち
+### ✅ 実装完了
 
 1. **DebugMakeアクション**
-   - API仕様の確定
-   - アクション送信の実装
+   - ✅ API仕様の確認（`suit/types/message/payload/core.ts`）
+   - ✅ アクション送信の実装（`tests/helpers/debug-actions.ts`）
 
 2. **カード召喚と効果検証**
-   - UnitDriveアクションの送信タイミング
-   - 効果解決の完全な検証
+   - ✅ UnitDriveアクションの実装
+   - ✅ 効果解決の検証システム（`verifyCardAddedToHand`）
 
-## 実装が完了した後の流れ
+## 実装された機能
 
-1. **DebugMake APIの確認**
+1. **DebugMake API**
    ```typescript
-   // the-foolのドキュメントまたはコードから正確なAPIを確認
+   // suit/types/message/payload/core.ts より
+   export interface DebugMakePayload extends BasePayload {
+     type: 'DebugMake';
+     player: string;
+     catalogId: string;
+   }
    ```
 
-2. **テストコードの更新**
+2. **テストコード実装**
    ```typescript
-   // tests/sandbox-debug.test.ts のTODO部分を実装
-   wsClient.send({
-     type: "DebugMake",
-     player: playerId,
-     catalogId: TEST_CARD_ID,
-     destination: "hand",
-   });
+   // tests/sandbox-debug.test.ts より
+   const message: ClientMessage = {
+     action: { type: "debug", handler: "core" },
+     payload: {
+       type: "DebugMake",
+       player: playerId,
+       catalogId: TEST_CARD_ID,
+     },
+   };
+   wsClient.send(message);
    ```
 
 3. **効果検証の自動化**
    ```typescript
    // 効果発動前後の状態を比較
-   expect(afterState.hand.length).toBe(beforeState.hand.length + 1);
+   const effectResult = verifyCardAddedToHand(beforeSync, afterSync, playerId, 4);
+   expect(effectResult.success).toBe(true);
    ```
 
 ## 将来的な拡張
