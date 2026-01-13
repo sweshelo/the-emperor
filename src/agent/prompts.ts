@@ -8,6 +8,7 @@ import type { CatalogCard } from "../schemas/catalog.ts";
 import type { IAtom } from "../../suit/types/game/card/index.ts";
 import { join } from "node:path";
 import { readdirSync } from "node:fs";
+import { encode } from "@toon-format/toon";
 
 /**
  * Type guard to check if an IAtom has catalogId (is actually an ICard)
@@ -77,32 +78,57 @@ const COLOR_NAMES: Record<number, string> = {
 };
 
 /**
- * Format a card for display in prompt
+ * Structured card data for TOON encoding
  */
-function formatCard(card: ICard, catalogInfo?: CatalogCard): string {
-  const name = catalogInfo?.name ?? `Card#${card.catalogId}`;
-  const cost = catalogInfo?.cost ?? "?";
-  const color = COLOR_NAMES[catalogInfo?.color ?? 6] ?? "Unknown";
-  const ability = catalogInfo?.ability ?? "";
-  const bp = catalogInfo?.bp ? `BP: ${catalogInfo.bp.join("/")}` : "";
-
-  return `[${card.id}] ${name} (Cost: ${cost}, ${color}) ${bp} ${ability}`.trim();
+interface CardData {
+  id: string;
+  name: string;
+  cost: number | string;
+  color: string;
+  bp?: string;
+  ability?: string;
 }
 
 /**
- * Format a unit for display in prompt
+ * Structured unit data for TOON encoding
  */
-function formatUnit(unit: IUnit, catalogInfo?: CatalogCard): string {
-  const name = catalogInfo?.name ?? `Unit#${unit.catalogId}`;
-  const currentBp = unit.bp;
-  const active = unit.active ? "Active" : "Exhausted";
-  const canBoot = unit.hasBootAbility && !unit.isBooted ? ", Can Boot" : "";
-
-  return `[${unit.id}] ${name} (BP: ${currentBp}, ${active}${canBoot})`;
+interface UnitData {
+  id: string;
+  name: string;
+  bp: number;
+  status: string;
+  canBoot?: boolean;
 }
 
 /**
- * Format player state for the prompt
+ * Convert card to structured data for TOON encoding
+ */
+function cardToData(card: ICard, catalogInfo?: CatalogCard): CardData {
+  return {
+    id: card.id,
+    name: catalogInfo?.name ?? `Card#${card.catalogId}`,
+    cost: catalogInfo?.cost ?? "?",
+    color: COLOR_NAMES[catalogInfo?.color ?? 6] ?? "Unknown",
+    bp: catalogInfo?.bp ? catalogInfo.bp.join("/") : undefined,
+    ability: catalogInfo?.ability || undefined,
+  };
+}
+
+/**
+ * Convert unit to structured data for TOON encoding
+ */
+function unitToData(unit: IUnit, catalogInfo?: CatalogCard): UnitData {
+  return {
+    id: unit.id,
+    name: catalogInfo?.name ?? `Unit#${unit.catalogId}`,
+    bp: unit.bp,
+    status: unit.active ? "Active" : "Exhausted",
+    canBoot: unit.hasBootAbility && !unit.isBooted ? true : undefined,
+  };
+}
+
+/**
+ * Format player state for the prompt using TOON format for arrays
  */
 function formatPlayerState(
   player: IPlayer,
@@ -112,47 +138,40 @@ function formatPlayerState(
   const label = isMyPlayer ? "YOUR" : "OPPONENT'S";
   const lines: string[] = [`## ${label} STATE`];
 
-  // Resources
-  lines.push(`- Life: ${player.life.current}/${player.life.max}`);
-  lines.push(`- CP: ${player.cp.current}/${player.cp.max}`);
+  // Resources as structured data
+  const resources = {
+    life: `${player.life.current}/${player.life.max}`,
+    cp: `${player.cp.current}/${player.cp.max}`,
+    triggers: player.trigger.length,
+    jokerGauge: player.joker.gauge,
+  };
+  lines.push(encode(resources));
 
   // Hand (only show details for own hand)
   if (isMyPlayer && player.hand.length > 0) {
-    lines.push(`- Hand (${player.hand.length} cards):`);
-    for (const atom of player.hand) {
-      if (hasCardInfo(atom)) {
-        const info = catalogLookup(atom.catalogId);
-        lines.push(`  ${formatCard(atom, info)}`);
-      } else {
-        lines.push(`  [${atom.id}] Unknown card`);
-      }
-    }
+    lines.push(`### Hand (${player.hand.length} cards)`);
+    const handData = player.hand
+      .filter((atom): atom is ICard => hasCardInfo(atom))
+      .map((card) => cardToData(card, catalogLookup(card.catalogId)));
+    lines.push(encode({ cards: handData }));
   } else {
-    lines.push(`- Hand: ${player.hand.length} cards`);
+    lines.push(`### Hand: ${player.hand.length} cards`);
   }
 
   // Field
   if (player.field.length > 0) {
-    lines.push(`- Field (${player.field.length} units):`);
-    for (const unit of player.field) {
-      const info = catalogLookup(unit.catalogId);
-      lines.push(`  ${formatUnit(unit, info)}`);
-    }
+    lines.push(`### Field (${player.field.length} units)`);
+    const fieldData = player.field.map((unit) => unitToData(unit, catalogLookup(unit.catalogId)));
+    lines.push(encode({ units: fieldData }));
   } else {
-    lines.push(`- Field: Empty`);
+    lines.push(`### Field: Empty`);
   }
 
-  // Triggers (only count for opponent)
-  if (isMyPlayer && player.trigger.length > 0) {
-    lines.push(`- Triggers set: ${player.trigger.length}`);
-  } else if (player.trigger.length > 0) {
-    lines.push(`- Triggers set: ${player.trigger.length}`);
-  }
-
-  // JOKER gauge
+  // JOKER info
   if (player.joker.card.length > 0) {
-    const jokerInfo = player.joker.card.map((j) => `${j.chara}: ${j.cost} gauge`).join(", ");
-    lines.push(`- JOKER: ${jokerInfo} (Gauge: ${player.joker.gauge}%)`);
+    const jokerData = player.joker.card.map((j) => ({ chara: j.chara, cost: j.cost }));
+    lines.push(`### JOKER`);
+    lines.push(encode({ jokers: jokerData }));
   }
 
   return lines.join("\n");
@@ -193,47 +212,47 @@ export function formatGameStatePrompt(
 }
 
 /**
- * Format choice prompt section
+ * Format choice prompt section using TOON format
  */
 export function formatChoicePrompt(choice: ChoicesMessage): string {
   const lines: string[] = [];
 
   lines.push(`# CURRENT CHOICE`);
-  lines.push(`Title: ${choice.choices.title}`);
-  lines.push(`Type: ${choice.choices.type}`);
-  lines.push(`Prompt ID: ${choice.promptId}`);
 
-  if (choice.choices.isCancelable) {
-    lines.push(`(This choice can be cancelled/declined)`);
-  }
-
-  if (choice.choices.count !== undefined) {
-    lines.push(`Select up to ${choice.choices.count} item(s)`);
-  }
+  // Choice metadata as structured data
+  const choiceMeta = {
+    title: choice.choices.title,
+    type: choice.choices.type,
+    promptId: choice.promptId,
+    cancelable: choice.choices.isCancelable ?? false,
+    selectCount: choice.choices.count,
+  };
+  lines.push(encode(choiceMeta));
 
   lines.push("");
-  lines.push("Available options:");
+  lines.push("## Available options");
 
-  for (const item of choice.choices.items) {
+  // Format items based on type
+  const items = choice.choices.items.map((item) => {
     if ("bp" in item) {
       // It's a unit
-      const unit = item;
-      lines.push(`- [${unit.id}] ${unit.catalogId} (BP: ${unit.bp})`);
+      return { id: item.id, catalogId: item.catalogId, bp: item.bp };
     } else if ("catalogId" in item) {
       // It's a card
-      const card = item;
-      lines.push(`- [${card.id}] ${card.catalogId}`);
+      return { id: item.id, catalogId: item.catalogId };
     } else if ("name" in item) {
       // It's an option
-      lines.push(`- [${item.id}] ${item.name}`);
+      return { id: item.id, name: item.name };
     }
-  }
+    return { id: "unknown" };
+  });
+  lines.push(encode({ options: items }));
 
   return lines.join("\n");
 }
 
 /**
- * Format available actions for the turn
+ * Format available actions for the turn using TOON format
  */
 export function formatAvailableActionsPrompt(
   context: DecisionContext,
@@ -249,15 +268,19 @@ export function formatAvailableActionsPrompt(
     lines.push("");
     lines.push(`## respond_to_choice`);
     lines.push(`Respond to the current choice prompt.`);
-    lines.push(`Parameters:`);
-    lines.push(`- promptId: "${choice.promptId}"`);
-    if (choice.choices.type === "card" || choice.choices.type === "unit") {
-      lines.push(`- choiceIds: Array of selected item IDs (or empty to decline)`);
-    } else if (choice.choices.type === "option") {
-      lines.push(`- choiceIds: Array with single option ID`);
-    } else if (choice.choices.type === "block") {
-      lines.push(`- choiceIds: Array of unit IDs to block with (or empty to not block)`);
-    }
+
+    const params = {
+      promptId: choice.promptId,
+      choiceIds:
+        choice.choices.type === "card" || choice.choices.type === "unit"
+          ? "Array of selected item IDs (or empty to decline)"
+          : choice.choices.type === "option"
+            ? "Array with single option ID"
+            : choice.choices.type === "block"
+              ? "Array of unit IDs to block with (or empty to not block)"
+              : "Array of IDs",
+    };
+    lines.push(encode(params));
     return lines.join("\n");
   }
 
@@ -279,13 +302,13 @@ export function formatAvailableActionsPrompt(
     lines.push("");
     lines.push(`## summon_unit`);
     lines.push(`Play a unit card from hand to field.`);
-    lines.push(`Playable units:`);
-    for (const card of playableUnits) {
-      const info = catalogLookup(card.catalogId);
-      if (info) {
-        lines.push(`- [${card.id}] ${info.name} (Cost: ${info.cost})`);
-      }
-    }
+    const units = playableUnits
+      .map((card) => {
+        const info = catalogLookup(card.catalogId);
+        return info ? { id: card.id, name: info.name, cost: info.cost } : null;
+      })
+      .filter((u): u is { id: string; name: string; cost: number } => u !== null);
+    lines.push(encode({ playable: units }));
   }
 
   // Attack with units
@@ -294,11 +317,11 @@ export function formatAvailableActionsPrompt(
     lines.push("");
     lines.push(`## attack`);
     lines.push(`Attack with an active unit.`);
-    lines.push(`Units that can attack:`);
-    for (const unit of attackableUnits) {
+    const units = attackableUnits.map((unit) => {
       const info = catalogLookup(unit.catalogId);
-      lines.push(`- [${unit.id}] ${info?.name ?? unit.catalogId} (BP: ${unit.bp})`);
-    }
+      return { id: unit.id, name: info?.name ?? unit.catalogId, bp: unit.bp };
+    });
+    lines.push(encode({ attackable: units }));
   }
 
   // Set triggers
@@ -312,13 +335,13 @@ export function formatAvailableActionsPrompt(
     lines.push("");
     lines.push(`## set_trigger`);
     lines.push(`Set a trigger/intercept card face-down.`);
-    lines.push(`Available:`);
-    for (const card of triggerCards) {
-      const info = catalogLookup(card.catalogId);
-      if (info) {
-        lines.push(`- [${card.id}] ${info.name} (Cost: ${info.cost})`);
-      }
-    }
+    const triggers = triggerCards
+      .map((card) => {
+        const info = catalogLookup(card.catalogId);
+        return info ? { id: card.id, name: info.name, cost: info.cost } : null;
+      })
+      .filter((t): t is { id: string; name: string; cost: number } => t !== null);
+    lines.push(encode({ settable: triggers }));
   }
 
   // End turn is always available
@@ -359,7 +382,7 @@ export function buildDecisionPrompt(
 }
 
 /**
- * Build mulligan decision prompt
+ * Build mulligan decision prompt using TOON format
  */
 export function buildMulliganPrompt(
   hand: IAtom[],
@@ -370,16 +393,13 @@ export function buildMulliganPrompt(
 
   lines.push("# MULLIGAN DECISION");
   lines.push("");
-  lines.push("Your starting hand:");
+  lines.push("## Starting hand");
 
-  for (const atom of hand) {
-    if (hasCardInfo(atom)) {
-      const info = catalogLookup(atom.catalogId);
-      lines.push(`- ${formatCard(atom, info)}`);
-    } else {
-      lines.push(`- [${atom.id}] Unknown card`);
-    }
-  }
+  // Convert hand to TOON format
+  const handData = hand
+    .filter((atom): atom is ICard => hasCardInfo(atom))
+    .map((card) => cardToData(card, catalogLookup(card.catalogId)));
+  lines.push(encode({ cards: handData }));
 
   lines.push("");
   lines.push("Should you keep this hand or redraw?");

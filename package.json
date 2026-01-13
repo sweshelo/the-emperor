@@ -29,6 +29,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
     "@modelcontextprotocol/sdk": "^1.25.2",
+    "@toon-format/toon": "^2.1.0",
     "zod": "^4.3.5"
   }
 }
