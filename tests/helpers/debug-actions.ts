@@ -7,6 +7,41 @@ import type { PlayerEntryPayload, DebugMakePayload, UnitDrivePayload, ClientMess
 import type { IAtom } from "../../suit/types/index.ts";
 
 /**
+ * Send Continue message to acknowledge DisplayEffect
+ * This is required because System.show() waits for a client response
+ *
+ * @param wsClient WebSocket client
+ * @param promptId The prompt ID from the DisplayEffect message
+ */
+export function sendContinue(
+  wsClient: GameWebSocketClient,
+  promptId: string
+): void {
+  if (!wsClient.isConnected()) {
+    throw new Error("WebSocket is not connected");
+  }
+
+  const message: ClientMessage = {
+    action: {
+      type: "continue",
+      handler: "core",
+    },
+    payload: {
+      type: "Continue",
+      promptId,
+    },
+  };
+
+  try {
+    wsClient.send(message);
+    console.log(`[Continue] Sent for promptId: ${promptId}`);
+  } catch (error) {
+    console.error("[Continue] Failed to send:", error);
+    throw error;
+  }
+}
+
+/**
  * Send PlayerEntry message to register as a player in the room
  *
  * @param wsClient WebSocket client
@@ -184,6 +219,88 @@ export async function waitForMessage(
   }
 
   throw new Error(`Timeout waiting for message type: ${messageType}`);
+}
+
+/**
+ * Wait for a DisplayEffect message with a specific effect title
+ *
+ * @param messages Array of received messages
+ * @param effectTitle The effect title to wait for (e.g., "援軍／緑")
+ * @param timeout Timeout in milliseconds (default: 5000)
+ * @returns The matched DisplayEffect message
+ */
+export async function waitForDisplayEffect(
+  messages: any[],
+  effectTitle: string,
+  timeout: number = 5000
+): Promise<any> {
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < timeout) {
+    const message = messages.find(
+      (m) => m.payload?.type === "DisplayEffect" && m.payload?.title === effectTitle
+    );
+    if (message) {
+      return message;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  throw new Error(`Timeout waiting for DisplayEffect: ${effectTitle}`);
+}
+
+/**
+ * Wait for a Defrost message (indicates player can act again after effect resolution)
+ *
+ * @param messages Array of received messages
+ * @param afterIndex Start searching from this index
+ * @param timeout Timeout in milliseconds (default: 5000)
+ * @returns The Defrost message
+ */
+export async function waitForDefrost(
+  messages: any[],
+  afterIndex: number = 0,
+  timeout: number = 5000
+): Promise<any> {
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < timeout) {
+    for (let i = afterIndex; i < messages.length; i++) {
+      if (messages[i]?.payload?.type === "Defrost") {
+        return messages[i];
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  throw new Error(`Timeout waiting for Defrost message`);
+}
+
+/**
+ * Wait for the next Sync message after a specific point
+ *
+ * @param messages Array of received messages
+ * @param afterIndex Start searching from this index
+ * @param timeout Timeout in milliseconds (default: 5000)
+ * @returns The next Sync message
+ */
+export async function waitForNextSync(
+  messages: any[],
+  afterIndex: number,
+  timeout: number = 5000
+): Promise<any> {
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < timeout) {
+    for (let i = afterIndex + 1; i < messages.length; i++) {
+      if (messages[i]?.payload?.type === "Sync") {
+        return messages[i];
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  throw new Error(`Timeout waiting for next Sync message after index ${afterIndex}`);
 }
 
 /**

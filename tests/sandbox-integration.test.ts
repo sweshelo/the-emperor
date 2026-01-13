@@ -5,14 +5,12 @@
 import { describe, test, expect, beforeAll } from "bun:test";
 import { SandboxClient } from "../src/sandbox/client.ts";
 
-// Test configuration
-const SANDBOX_BASE_URL = process.env.TEST_SANDBOX_URL || "http://localhost:3000";
-
 describe("Sandbox Integration Tests", () => {
   let client: SandboxClient;
 
   beforeAll(() => {
-    client = new SandboxClient(SANDBOX_BASE_URL);
+    // SandboxClient uses SANDBOX_URL env var with fallback to localhost:5000
+    client = new SandboxClient();
   });
 
   test("should check if sandbox is available", async () => {

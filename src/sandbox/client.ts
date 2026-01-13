@@ -34,15 +34,19 @@ export interface SandboxDestroyResponse {
   message: string;
 }
 
+/** Default sandbox server URL */
+const DEFAULT_SANDBOX_URL = "http://localhost:5000";
+
 /**
  * Sandbox API client for evaluating game moves
  */
 export class SandboxClient {
   private baseUrl: string;
 
-  constructor(baseUrl: string) {
+  constructor(baseUrl?: string) {
+    const url = baseUrl ?? process.env.SANDBOX_URL ?? DEFAULT_SANDBOX_URL;
     // Remove trailing slash if present
-    this.baseUrl = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
+    this.baseUrl = url.endsWith("/") ? url.slice(0, -1) : url;
   }
 
   /**

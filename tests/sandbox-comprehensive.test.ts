@@ -6,18 +6,19 @@ import { describe, test, expect, beforeAll, afterEach } from "bun:test";
 import { SandboxClient } from "../src/sandbox/client.ts";
 import { GameWebSocketClient } from "../src/websocket/client.ts";
 import type { GameState } from "../src/types/game.ts";
+import { loadSyncGameState, getPlayerIds } from "./helpers/data-loader.ts";
 import syncData from "../data/payload/sync.json";
 
-// Test configuration
-const SANDBOX_BASE_URL = process.env.TEST_SANDBOX_URL || "http://localhost:3000";
-const SANDBOX_WS_URL = process.env.TEST_SANDBOX_WS_URL || "ws://localhost:3000";
+// Test configuration - uses SANDBOX_URL env var with fallback
+const SANDBOX_WS_URL = process.env.SANDBOX_WS_URL || "ws://localhost:5000";
 
 describe("Sandbox Comprehensive Tests", () => {
   let client: SandboxClient;
   let wsClient: GameWebSocketClient | null = null;
 
   beforeAll(() => {
-    client = new SandboxClient(SANDBOX_BASE_URL);
+    // SandboxClient uses SANDBOX_URL env var with fallback to localhost:5000
+    client = new SandboxClient();
   });
 
   afterEach(async () => {
@@ -164,47 +165,55 @@ describe("Sandbox Comprehensive Tests", () => {
         return;
       }
 
-      // Setup sandbox
-      await client.createRoom();
-      const gameState: GameState = syncData.payload.body as any;
-      await client.loadState(gameState);
-      await client.startGame();
-
-      // Connect via WebSocket
-      wsClient = new GameWebSocketClient({
-        url: `${SANDBOX_WS_URL}?roomId=99999`,
-        reconnect: false,
-      });
-
-      const receivedMessages: any[] = [];
-      wsClient.onMessage((message) => {
-        console.log("Received message:", message.type);
-        receivedMessages.push(message);
-      });
-
-      await wsClient.connect();
-
-      // Wait for connection to stabilize and receive initial messages
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // Verify we received at least one message
-      expect(receivedMessages.length).toBeGreaterThan(0);
-      console.log(`✓ Received ${receivedMessages.length} message(s) from server`);
-
-      // Get player ID from sync data
-      const playerIds = Object.keys(gameState.players);
+      // Load game state and get player info
+      const gameState = loadSyncGameState();
+      const playerIds = getPlayerIds(gameState);
       const playerId = playerIds[0];
 
       if (!playerId) {
         throw new Error("No player ID found in game state");
       }
 
-      // Try to send a continue action (this should be safe as it just advances)
-      console.log(`Sending Continue action for player: ${playerId}`);
+      const playerInfo = gameState.players[playerId];
 
-      // Note: We need a promptId, which we don't have from the initial state
-      // So this test demonstrates the action sending capability
-      // In a real scenario, we'd wait for a Choices message first
+      // Setup sandbox
+      await client.createRoom();
+      await client.loadState(gameState);
+
+      // Connect via WebSocket BEFORE starting game
+      wsClient = new GameWebSocketClient({
+        url: `${SANDBOX_WS_URL}?roomId=99999`,
+        reconnect: false,
+      });
+
+      const receivedMessages: unknown[] = [];
+      wsClient.onMessage((message) => {
+        receivedMessages.push(message);
+      });
+
+      await wsClient.connect();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Register player to receive Sync messages
+      const { playerEntry } = await import("./helpers/debug-actions.ts");
+      await playerEntry(
+        wsClient,
+        "99999",
+        playerId,
+        playerInfo.name,
+        [],
+        []
+      );
+
+      // Start game after player registration
+      await client.startGame();
+
+      // Wait for messages after game start
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Verify we received at least one message
+      expect(receivedMessages.length).toBeGreaterThan(0);
+      console.log(`✓ Received ${receivedMessages.length} message(s) from server`);
 
       console.log("✓ Action sending mechanism verified");
       console.log("  (Full action execution requires waiting for server prompts)");
