@@ -1,5 +1,6 @@
 /**
  * Buddy Mode Agent - Interactive agent that takes commands from the user
+ * With optional AI advisor for evaluation and advice
  */
 
 import * as readline from "node:readline";
@@ -7,6 +8,7 @@ import type { Agent, DecisionContext, ParsedAction } from "../types/agent.ts";
 import type { IAtom } from "../../suit/types/game/card/index.ts";
 import type { CatalogCard } from "../schemas/catalog.ts";
 import type { ICard, ChoicesMessage } from "../types/game.ts";
+import { AIAdvisor, type AdvisorConfig, type LearningRecord } from "./advisor.ts";
 
 /**
  * Type guard to check if an IAtom has catalogId (is actually an ICard)
@@ -64,17 +66,48 @@ const COLOR_NAMES: Record<number, string> = {
 };
 
 /**
+ * BuddyAgent configuration
+ */
+export interface BuddyAgentConfig {
+  /** AI advisor configuration (optional) */
+  advisor?: AdvisorConfig;
+  /** Enable automatic evaluation of user moves */
+  autoEvaluate?: boolean;
+  /** Path to save/load learning records */
+  learningRecordsPath?: string;
+}
+
+/**
  * BuddyAgent - Allows user to control the agent via command line
+ * With optional AI advisor for evaluation and advice
  */
 export class BuddyAgent implements Agent {
   private catalogLookup: (id: string) => CatalogCard | undefined;
   private rl: readline.Interface | null = null;
+  private advisor: AIAdvisor | null = null;
+  private autoEvaluate: boolean;
+  private learningRecordsPath: string | null;
+  private lastContext: DecisionContext | null = null;
 
   constructor(
     private name: string,
-    catalogLookup: (id: string) => CatalogCard | undefined
+    catalogLookup: (id: string) => CatalogCard | undefined,
+    config?: BuddyAgentConfig
   ) {
     this.catalogLookup = catalogLookup;
+    this.autoEvaluate = config?.autoEvaluate ?? false;
+    this.learningRecordsPath = config?.learningRecordsPath ?? null;
+
+    // Initialize AI advisor if API key provided
+    if (config?.advisor) {
+      this.advisor = new AIAdvisor(config.advisor, catalogLookup);
+      console.log("[BuddyAgent] AIアドバイザーを有効化しました");
+
+      // Load existing learning records
+      if (this.learningRecordsPath) {
+        this.loadLearningRecords();
+      }
+    }
   }
 
   getName(): string {
@@ -209,8 +242,20 @@ export class BuddyAgent implements Agent {
       console.log("  end                   - End your turn");
     }
 
+    console.log("");
     console.log("  state                 - Redisplay game state");
     console.log("  help                  - Show this help");
+
+    // AI advisor commands
+    if (this.advisor) {
+      console.log("");
+      console.log("--- AI ADVISOR COMMANDS ---");
+      console.log("  /think                - AI analyzes current situation");
+      console.log("  /advice <action>      - Get advice for specific action");
+      console.log("  /records              - Show learning records summary");
+      console.log("  /save                 - Save learning records");
+    }
+
     console.log("-".repeat(30));
   }
 
@@ -469,9 +514,89 @@ export class BuddyAgent implements Agent {
   }
 
   /**
+   * Handle AI advisor commands
+   * Returns true if command was handled
+   */
+  private async handleAdvisorCommand(input: string, context: DecisionContext): Promise<boolean> {
+    if (!this.advisor) {
+      return false;
+    }
+
+    const parts = input.split(/\s+/);
+    const command = parts[0]?.toLowerCase();
+
+    switch (command) {
+      case "/think": {
+        console.log("\n[AI] 状況を分析中...\n");
+        try {
+          const analysis = await this.advisor.think(context);
+          console.log("--- AI分析結果 ---");
+          console.log(analysis);
+          console.log("-".repeat(30));
+        } catch (error) {
+          console.error("[AI] 分析エラー:", error);
+        }
+        return true;
+      }
+
+      case "/advice": {
+        const actionType = parts.slice(1).join(" ");
+        if (!actionType) {
+          console.log("Usage: /advice <action_type>");
+          console.log("Example: /advice summon, /advice attack, /advice end");
+          return true;
+        }
+        console.log(`\n[AI] 「${actionType}」についてアドバイス中...\n`);
+        try {
+          const advice = await this.advisor.getAdviceFor(context, actionType);
+          console.log("--- AIアドバイス ---");
+          console.log(advice);
+          console.log("-".repeat(30));
+        } catch (error) {
+          console.error("[AI] アドバイスエラー:", error);
+        }
+        return true;
+      }
+
+      case "/records": {
+        const records = this.advisor.getLearningRecords();
+        console.log("\n--- 学習記録サマリー ---");
+        console.log(`総記録数: ${records.length}`);
+
+        if (records.length > 0) {
+          const goodMoves = records.filter((r) => r.score > 0).length;
+          const badMoves = records.filter((r) => r.score < 0).length;
+          console.log(`好手: ${goodMoves}, 悪手: ${badMoves}, 普通: ${records.length - goodMoves - badMoves}`);
+
+          console.log("\n最近の記録:");
+          const recentRecords = records.slice(-5);
+          for (const record of recentRecords) {
+            const scoreIcon = record.score > 0 ? "◎" : record.score < 0 ? "×" : "○";
+            console.log(`  ${scoreIcon} ${record.situation} - ${record.userAction}`);
+            console.log(`    → ${record.reasoning}`);
+          }
+        }
+        console.log("-".repeat(30));
+        return true;
+      }
+
+      case "/save": {
+        await this.saveLearningRecords();
+        return true;
+      }
+
+      default:
+        return false;
+    }
+  }
+
+  /**
    * Main decision loop - display state and wait for user command
    */
   async decideAction(context: DecisionContext): Promise<ParsedAction> {
+    // Store context for evaluation
+    this.lastContext = context;
+
     // Display game state
     this.displayGameState(context);
 
@@ -504,10 +629,103 @@ export class BuddyAgent implements Agent {
         continue;
       }
 
+      // Handle AI advisor commands
+      if (input.startsWith("/")) {
+        const handled = await this.handleAdvisorCommand(input, context);
+        if (handled) {
+          continue;
+        }
+      }
+
       const action = this.parseCommand(input, context);
       if (action) {
+        // Evaluate the action if auto-evaluate is enabled
+        if (this.autoEvaluate && this.advisor) {
+          this.evaluateUserAction(context, action).catch((err) => {
+            console.error("[AI] 評価エラー:", err);
+          });
+        }
         return action;
       }
+    }
+  }
+
+  /**
+   * Evaluate user's action asynchronously
+   */
+  private async evaluateUserAction(context: DecisionContext, action: ParsedAction): Promise<void> {
+    if (!this.advisor) return;
+
+    const actionDescription = this.describeAction(action, context);
+    const result = await this.advisor.evaluateAndRecord(context, action.type, actionDescription);
+
+    if (result.recorded) {
+      console.log(`\n[AI評価] ${result.evaluation} (記録済み)`);
+    }
+  }
+
+  /**
+   * Type guard for payload with target ID
+   */
+  private hasTargetWithId(payload: unknown): payload is { target: { id: string } } {
+    if (typeof payload !== "object" || payload === null) {
+      return false;
+    }
+    if (!("target" in payload)) {
+      return false;
+    }
+    const target: unknown = payload.target;
+    if (typeof target !== "object" || target === null) {
+      return false;
+    }
+    if (!("id" in target)) {
+      return false;
+    }
+    return typeof target.id === "string";
+  }
+
+  /**
+   * Describe an action in human-readable form
+   */
+  private describeAction(action: ParsedAction, context: DecisionContext): string {
+    const payload = action.payload;
+
+    switch (action.type) {
+      case "UnitDrive": {
+        if (this.hasTargetWithId(payload)) {
+          const myPlayer = context.gameState.players[context.myPlayerId];
+          const card = myPlayer?.hand.find((c) => c.id === payload.target.id);
+          if (card && hasCardInfo(card)) {
+            const info = this.catalogLookup(card.catalogId);
+            return `${info?.name ?? card.catalogId}を召喚`;
+          }
+        }
+        return "ユニット召喚";
+      }
+
+      case "Attack": {
+        if (this.hasTargetWithId(payload)) {
+          const myPlayer = context.gameState.players[context.myPlayerId];
+          const unit = myPlayer?.field.find((u) => u.id === payload.target.id);
+          if (unit) {
+            const info = this.catalogLookup(unit.catalogId);
+            return `${info?.name ?? unit.catalogId}(BP${unit.bp})でアタック`;
+          }
+        }
+        return "アタック";
+      }
+
+      case "TriggerSet":
+        return "トリガーセット";
+
+      case "Continue":
+        return "ターン終了";
+
+      case "Choose":
+        return "選択肢を選択";
+
+      default:
+        return action.type;
     }
   }
 
@@ -562,9 +780,94 @@ export class BuddyAgent implements Agent {
   }
 
   /**
-   * Cleanup readline interface
+   * Type guard for LearningRecord
+   */
+  private isLearningRecord(value: unknown): value is LearningRecord {
+    if (typeof value !== "object" || value === null) {
+      return false;
+    }
+    return (
+      "timestamp" in value &&
+      "gameRound" in value &&
+      "gameTurn" in value &&
+      "situation" in value &&
+      "userAction" in value &&
+      "evaluation" in value &&
+      "score" in value &&
+      "reasoning" in value &&
+      typeof value.timestamp === "number" &&
+      typeof value.gameRound === "number" &&
+      typeof value.gameTurn === "number" &&
+      typeof value.situation === "string" &&
+      typeof value.userAction === "string" &&
+      typeof value.evaluation === "string" &&
+      typeof value.score === "number" &&
+      typeof value.reasoning === "string"
+    );
+  }
+
+  /**
+   * Load learning records from file
+   */
+  private loadLearningRecords(): void {
+    if (!this.learningRecordsPath || !this.advisor) return;
+
+    try {
+      const file = Bun.file(this.learningRecordsPath);
+      if (file.size > 0) {
+        file.text().then((text) => {
+          const parsed: unknown = JSON.parse(text);
+          if (Array.isArray(parsed)) {
+            const validRecords = parsed.filter((item): item is LearningRecord => this.isLearningRecord(item));
+            if (validRecords.length > 0) {
+              this.advisor?.loadRecords(validRecords);
+            }
+          }
+        }).catch(() => {
+          // File doesn't exist or is empty, start fresh
+        });
+      }
+    } catch {
+      // File doesn't exist, start fresh
+    }
+  }
+
+  /**
+   * Save learning records to file
+   */
+  private async saveLearningRecords(): Promise<void> {
+    if (!this.learningRecordsPath || !this.advisor) {
+      console.log("[BuddyAgent] 保存パスが設定されていません");
+      return;
+    }
+
+    try {
+      const records = this.advisor.getLearningRecords();
+      await Bun.write(this.learningRecordsPath, JSON.stringify(records, null, 2));
+      console.log(`[BuddyAgent] 学習記録を保存しました: ${this.learningRecordsPath}`);
+    } catch (error) {
+      console.error("[BuddyAgent] 保存エラー:", error);
+    }
+  }
+
+  /**
+   * Get AI advisor (for external access)
+   */
+  getAdvisor(): AIAdvisor | null {
+    return this.advisor;
+  }
+
+  /**
+   * Cleanup readline interface and save records
    */
   clearHistory(): void {
+    // Save learning records before cleanup
+    if (this.advisor && this.learningRecordsPath) {
+      this.saveLearningRecords().catch((err) => {
+        console.error("[BuddyAgent] 終了時の保存エラー:", err);
+      });
+    }
+
     if (this.rl) {
       this.rl.close();
       this.rl = null;

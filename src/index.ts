@@ -58,6 +58,11 @@ function loadConfig(): Config {
 }
 
 /**
+ * Default path for learning records
+ */
+const LEARNING_RECORDS_PATH = "./data/learning-records.json";
+
+/**
  * Create agent based on mode
  */
 function createAgent(
@@ -68,6 +73,21 @@ function createAgent(
   if (mode === "buddy") {
     console.log("Mode: BUDDY (Interactive)");
     console.log("  You control the agent via command line input");
+
+    // Enable AI advisor if API key is available
+    if (config.apiKey) {
+      console.log("  AI Advisor: ENABLED (use /think, /advice commands)");
+      return new BuddyAgent(config.playerName, catalogLookup, {
+        advisor: {
+          apiKey: config.apiKey,
+          model: config.model,
+        },
+        autoEvaluate: true,
+        learningRecordsPath: LEARNING_RECORDS_PATH,
+      });
+    }
+
+    console.log("  AI Advisor: DISABLED (set ANTHROPIC_API_KEY to enable)");
     return new BuddyAgent(config.playerName, catalogLookup);
   }
 
