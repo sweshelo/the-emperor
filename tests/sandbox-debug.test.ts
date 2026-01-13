@@ -130,7 +130,7 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
 
       // Register player BEFORE starting game
       const { playerEntry } = await import("./helpers/debug-actions.ts");
-      playerEntry(
+      await playerEntry(
         wsClient,
         "99999",
         playerId,
@@ -139,9 +139,7 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
         []
       );
 
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // Start game after player registration
+      // PlayerEntry is now confirmed (Sync received), start the game
       await client.startGame();
 
       // Wait for Sync messages after game start
@@ -439,7 +437,7 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
 
       // Register player BEFORE starting game
       const { playerEntry } = await import("./helpers/debug-actions.ts");
-      playerEntry(
+      await playerEntry(
         wsClient,
         "99999",
         playerId,
@@ -448,9 +446,7 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
         []
       );
 
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // Start game after player registration
+      // PlayerEntry is now confirmed (Sync received), start the game
       await client.startGame();
 
       await new Promise((resolve) => setTimeout(resolve, 1000));

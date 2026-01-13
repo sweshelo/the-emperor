@@ -18,6 +18,8 @@ import type { IAtom } from "../../suit/types/index.ts";
  *
  * Note: This must be called after WebSocket connection and before game actions.
  * Without player registration, the server won't send game state updates.
+ *
+ * Returns a promise that resolves when the registration is confirmed (Sync message received).
  */
 export function playerEntry(
   wsClient: GameWebSocketClient,
@@ -26,35 +28,59 @@ export function playerEntry(
   playerName: string,
   deck: string[] = [],
   jokersOwned: string[] = []
-): void {
-  if (!wsClient.isConnected()) {
-    throw new Error("WebSocket is not connected");
-  }
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (!wsClient.isConnected()) {
+      reject(new Error("WebSocket is not connected"));
+      return;
+    }
 
-  const message: ClientMessage = {
-    action: {
-      type: "join",
-      handler: "room",
-    },
-    payload: {
-      type: "PlayerEntry",
-      roomId,
-      player: {
-        id: playerId,
-        name: playerName,
-        deck,
+    const message: ClientMessage = {
+      action: {
+        type: "join",
+        handler: "room",
       },
-      jokersOwned,
-    },
-  };
+      payload: {
+        type: "PlayerEntry",
+        roomId,
+        player: {
+          id: playerId,
+          name: playerName,
+          deck,
+        },
+        jokersOwned,
+      },
+    };
 
-  try {
-    wsClient.send(message);
-    console.log(`[PlayerEntry] Registered player: ${playerName} (${playerId}) in room ${roomId}`);
-  } catch (error) {
-    console.error("[PlayerEntry] Failed to register player:", error);
-    throw error;
-  }
+    // Set up listener for Sync message (confirms registration)
+    let syncReceived = false;
+    const timeout = setTimeout(() => {
+      if (!syncReceived) {
+        cleanup();
+        reject(new Error("Timeout waiting for PlayerEntry confirmation (Sync message)"));
+      }
+    }, 5000); // 5 second timeout
+
+    const cleanup = wsClient.onMessage((msg) => {
+      if (msg.payload?.type === "Sync") {
+        syncReceived = true;
+        clearTimeout(timeout);
+        cleanup();
+        console.log(`[PlayerEntry] Confirmed: ${playerName} registered in room ${roomId}`);
+        resolve();
+      }
+    });
+
+    try {
+      wsClient.send(message);
+      console.log(`[PlayerEntry] Sent registration: ${playerName} (${playerId}) to room ${roomId}`);
+    } catch (error) {
+      clearTimeout(timeout);
+      cleanup();
+      console.error("[PlayerEntry] Failed to send:", error);
+      reject(error);
+    }
+  });
 }
 
 /**
