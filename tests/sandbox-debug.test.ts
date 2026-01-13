@@ -9,14 +9,14 @@ import type { GameState } from "../src/types/game.ts";
 import type { ServerMessage } from "../src/types/game.ts";
 import { loadSyncGameState, getPlayerIds } from "./helpers/data-loader.ts";
 
-// Test configuration
-const SANDBOX_BASE_URL = process.env.TEST_SANDBOX_URL || "http://localhost:3000";
-const SANDBOX_WS_URL = process.env.TEST_SANDBOX_WS_URL || "ws://localhost:3000";
+// Test configuration - uses SANDBOX_URL env var with fallback
+const SANDBOX_WS_URL = process.env.SANDBOX_WS_URL || "ws://localhost:5000";
 
 // Test card: ブロックナイト (1-1-018)
 // Effect: When this unit enters the field, add 1 random green unit card to hand
 const TEST_CARD_ID = "1-1-018";
 const TEST_CARD_NAME = "ブロックナイト";
+const TEST_CARD_EFFECT_NAME = "援軍／緑";
 
 describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
   let client: SandboxClient;
@@ -24,7 +24,8 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
   let receivedMessages: ServerMessage[] = [];
 
   beforeAll(() => {
-    client = new SandboxClient(SANDBOX_BASE_URL);
+    // SandboxClient uses SANDBOX_URL env var with fallback to localhost:5000
+    client = new SandboxClient();
   });
 
   afterEach(async () => {
@@ -44,10 +45,10 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
   });
 
   /**
-   * Enable debug mode in game state
+   * Enable debug mode in game state and optionally add green units to deck
    */
-  function enableDebugMode(state: GameState): GameState {
-    return {
+  function enableDebugMode(state: GameState, addGreenUnits: boolean = false): GameState {
+    const modifiedState = {
       ...state,
       rule: {
         ...state.rule,
@@ -67,6 +68,30 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
         },
       },
     };
+
+    // Add green units to deck for effect testing
+    if (addGreenUnits) {
+      const playerIds = Object.keys(modifiedState.players);
+      for (const playerId of playerIds) {
+        const player = modifiedState.players[playerId];
+        if (player) {
+          // Add ブロックナイト (1-1-018) to deck - a green unit
+          // Generate unique IDs for the added cards
+          const greenUnitId1 = `test-green-${Date.now()}-1`;
+          const greenUnitId2 = `test-green-${Date.now()}-2`;
+
+          // Add to deck with proper structure (catalogId is needed for effect to find green units)
+          player.deck = [
+            { id: greenUnitId1, catalogId: TEST_CARD_ID, color: 4 },
+            { id: greenUnitId2, catalogId: TEST_CARD_ID, color: 4 },
+            ...(player.deck || []),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ] as any;
+        }
+      }
+    }
+
+    return modifiedState;
   }
 
   test("should create sandbox room with debug mode enabled", async () => {
@@ -258,9 +283,9 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
         return;
       }
 
-      // Setup sandbox
+      // Setup sandbox - sync.json should already have green units in deck
       const baseState = loadSyncGameState();
-      const debugState = enableDebugMode(baseState);
+      const debugState = enableDebugMode(baseState, false); // Don't add extra green units
 
       // Get player info
       const playerIds = getPlayerIds(debugState);
@@ -353,34 +378,95 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
       const beforeSummonField = beforeSummon?.payload?.body?.players?.[playerId]?.field || [];
       console.log(`  Hand: ${beforeSummonHand.length}, Field: ${beforeSummonField.length}`);
 
-      unitDrive(wsClient, playerId, createdCard.id);
-      await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait longer for effect to resolve
+      // Record the current message index before UnitDrive
+      const messageIndexBeforeUnitDrive = receivedMessages.length;
 
-      const afterSummon = syncMessages[syncMessages.length - 1];
-      const afterSummonHand = afterSummon?.payload?.body?.players?.[playerId]?.hand || [];
-      const afterSummonField = afterSummon?.payload?.body?.players?.[playerId]?.field || [];
+      unitDrive(wsClient, playerId, createdCard.id);
+
+      // Import helper for waiting DisplayEffect
+      const { waitForDisplayEffect, waitForNextSync, waitForDefrost, sendContinue } = await import("./helpers/debug-actions.ts");
+
+      // Step 3: Wait for DisplayEffect message (effect resolution indicator)
+      console.log(`\n[Step 3] Waiting for DisplayEffect: ${TEST_CARD_EFFECT_NAME}...`);
+      const displayEffectMsg = await waitForDisplayEffect(receivedMessages, TEST_CARD_EFFECT_NAME, 3000);
+      console.log(`  ✓ DisplayEffect received: ${displayEffectMsg.payload?.title}`);
+      console.log(`    Description: ${displayEffectMsg.payload?.message}`);
+
+      // Send Continue to acknowledge DisplayEffect and allow effect resolution to proceed
+      const promptId = displayEffectMsg.payload?.promptId;
+      if (!promptId) {
+        throw new Error("No promptId in DisplayEffect message");
+      }
+      sendContinue(wsClient, promptId);
+      console.log(`  ✓ Continue sent for promptId: ${promptId}`);
+
+      // Wait for the Sync message after DisplayEffect (effect applied)
+      const displayEffectIndex = receivedMessages.indexOf(displayEffectMsg);
+      console.log(`\n[Step 4] Waiting for Sync after effect resolution...`);
+      const afterEffectSync = await waitForNextSync(receivedMessages, displayEffectIndex, 5000);
+      console.log(`  ✓ Sync received after effect resolution`);
+
+      // Verify effect results from the post-effect Sync
+      const afterSummonHand = afterEffectSync?.payload?.body?.players?.[playerId]?.hand || [];
+      const afterSummonField = afterEffectSync?.payload?.body?.players?.[playerId]?.field || [];
       console.log(`  Hand: ${afterSummonHand.length}, Field: ${afterSummonField.length}`);
 
       // Verify field size increased
       expect(afterSummonField.length).toBeGreaterThan(beforeSummonField.length);
       console.log(`  ✓ Card summoned to field`);
 
-      // Step 3: Verify effect - hand size should increase due to ブロックナイト effect
-      console.log(`\n[Step 3] Verifying ${TEST_CARD_NAME} effect (add green unit to hand)...`);
+      // Step 5: Wait for Defrost message or additional Sync (indicates effect resolution complete)
+      console.log(`\n[Step 5] Waiting for effect resolution to complete...`);
 
-      const effectResult = verifyCardAddedToHand(beforeSummon, afterSummon, playerId, 4); // 4 = green color
+      // Wait for Defrost or timeout (some game modes may not send Defrost)
+      let defrostReceived = false;
+      try {
+        const defrostMsg = await waitForDefrost(receivedMessages, displayEffectIndex, 2000);
+        console.log(`  ✓ Defrost received - effect resolution complete`);
+        defrostReceived = true;
+      } catch {
+        console.log(`  Defrost not received (this may be normal in sandbox mode)`);
+      }
+
+      // Wait a bit more to ensure all messages are received
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Get the latest Sync message after effect resolution
+      const latestSyncIndex = receivedMessages.reduce((latest, msg, idx) =>
+        msg?.payload?.type === "Sync" ? idx : latest, -1);
+      const finalSync = latestSyncIndex >= 0 ? receivedMessages[latestSyncIndex] : afterEffectSync;
+      const finalHand = finalSync?.payload?.body?.players?.[playerId]?.hand || [];
+
+      // Step 6: Verify effect - hand size should increase due to ブロックナイト effect
+      console.log(`\n[Step 6] Verifying ${TEST_CARD_NAME} effect (add green unit to hand)...`);
+      console.log(`  Hand before summon: ${beforeSummonHand.length}`);
+      console.log(`  Hand after effect: ${finalHand.length}`);
+
+      // ブロックナイト効果: 緑属性ユニットを1枚手札に加える
+      // 召喚で手札が1枚減るが、効果で1枚加わるので、差し引きゼロか+になるはず
+      // beforeSummonHand.length - 1 (召喚で減る) + 1 (効果で増える) = beforeSummonHand.length
+      // Note: 色のチェックは省略（サーバーから返されるカードにcolor属性がない場合があるため）
+      const effectResult = verifyCardAddedToHand(beforeSummon, finalSync, playerId);
 
       if (effectResult.success) {
         console.log(`  ✓ ${effectResult.message}`);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         console.log(`  Added cards:`, effectResult.addedCards.map((c: any) => ({
           id: c.id,
           catalogId: c.catalogId,
-          name: c.name,
-          color: c.color
+          name: c.name
         })));
+        // 追加されたカードがブロックナイト（緑属性）であることを確認
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const hasGreenUnit = effectResult.addedCards.some((c: any) => c.catalogId === TEST_CARD_ID);
+        if (hasGreenUnit) {
+          console.log(`  ✓ Green unit (${TEST_CARD_ID}) added to hand`);
+        } else {
+          console.log(`  Note: Added card is not ${TEST_CARD_ID}, but effect resolved successfully`);
+        }
       } else {
-        console.log(`  ⚠ ${effectResult.message}`);
-        console.log(`  Note: Effect resolution may require more time or specific game conditions`);
+        // 効果が解決されなかった場合はテスト失敗
+        throw new Error(`Effect not resolved: ${effectResult.message}. Expected card to be added to hand.`);
       }
 
       console.log("\n=== Test Complete ===\n");
@@ -388,7 +474,7 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
       console.error("Test failed:", error);
       throw error;
     }
-  });
+  }, { timeout: 15000 });
 
   test("should track message sequence for effect resolution", async () => {
     try {
