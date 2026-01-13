@@ -47,5 +47,6 @@ export {
 export {
   catalogCardSchema,
   isValidCatalogCard,
+  isJokerCard,
   type CatalogCard,
 } from "./catalog.ts";

@@ -4,7 +4,7 @@
 
 import type { DecisionContext } from "../types/agent.ts";
 import type { IPlayer, IUnit, ICard, ChoicesMessage } from "../types/game.ts";
-import type { CatalogCard } from "../schemas/catalog.ts";
+import { type CatalogCard, isJokerCard } from "../schemas/catalog.ts";
 import type { IAtom } from "../../suit/types/game/card/index.ts";
 import { join } from "node:path";
 import { readdirSync } from "node:fs";
@@ -104,6 +104,16 @@ interface UnitData {
  * Convert card to structured data for TOON encoding
  */
 function cardToData(card: ICard, catalogInfo?: CatalogCard): CardData {
+  // Handle JOKER cards (no color or bp)
+  if (catalogInfo && isJokerCard(catalogInfo)) {
+    return {
+      id: card.id,
+      name: catalogInfo.name,
+      cost: catalogInfo.cost,
+      color: "JOKER",
+      ability: catalogInfo.ability || undefined,
+    };
+  }
   return {
     id: card.id,
     name: catalogInfo?.name ?? `Card#${card.catalogId}`,

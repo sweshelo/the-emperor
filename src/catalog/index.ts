@@ -5,6 +5,7 @@
 import catalogData from "../../suit/catalog/catalog.json";
 import {
   isValidCatalogCard,
+  isJokerCard,
   type CatalogCard,
 } from "../schemas/index.ts";
 
@@ -89,12 +90,14 @@ export class CatalogService {
   }
 
   /**
-   * Get cards by color
+   * Get cards by color (excludes JOKER cards which have no color)
    */
   getCardsByColor(color: number): CatalogCard[] {
     const results: CatalogCard[] = [];
 
     for (const card of this.catalog.values()) {
+      // Skip JOKER cards (they don't have a color)
+      if (isJokerCard(card)) continue;
       if (card.color === color) {
         results.push(card);
       }
@@ -149,13 +152,15 @@ export class CatalogService {
   }
 
   /**
-   * Get cards by species
+   * Get cards by species (excludes JOKER cards which have no species)
    */
   getCardsBySpecies(species: string): CatalogCard[] {
     const results: CatalogCard[] = [];
 
     for (const card of this.catalog.values()) {
-      if (card.species && card.species.includes(species)) {
+      // Skip JOKER cards (they don't have species)
+      if (isJokerCard(card)) continue;
+      if (card.species?.includes(species)) {
         results.push(card);
       }
     }

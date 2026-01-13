@@ -6,7 +6,7 @@
 import * as readline from "node:readline";
 import type { Agent, DecisionContext, ParsedAction } from "../types/agent.ts";
 import type { IAtom } from "../../suit/types/game/card/index.ts";
-import type { CatalogCard } from "../schemas/catalog.ts";
+import { type CatalogCard, isJokerCard } from "../schemas/catalog.ts";
 import type { ICard, ChoicesMessage } from "../types/game.ts";
 import { AIAdvisor, type AdvisorConfig, type LearningRecord } from "./advisor.ts";
 
@@ -64,6 +64,21 @@ const COLOR_NAMES: Record<number, string> = {
   5: "Purple",
   6: "Colorless",
 };
+
+/**
+ * Get display info from catalog card (handles both regular and JOKER cards)
+ */
+function getCardDisplayInfo(card: CatalogCard | undefined): { bp: string; color: string } {
+  if (!card) {
+    return { bp: "", color: "?" };
+  }
+  if (isJokerCard(card)) {
+    return { bp: "", color: "JOKER" };
+  }
+  const bp = card.bp ? ` BP:${card.bp.join("/")}` : "";
+  const color = COLOR_NAMES[card.color] ?? "?";
+  return { bp, color };
+}
 
 /**
  * BuddyAgent configuration
@@ -155,8 +170,7 @@ export class BuddyAgent implements Agent {
         for (const atom of myPlayer.hand) {
           if (hasCardInfo(atom)) {
             const info = this.catalogLookup(atom.catalogId);
-            const bp = info?.bp ? ` BP:${info.bp.join("/")}` : "";
-            const color = COLOR_NAMES[info?.color ?? 6] ?? "?";
+            const { bp, color } = getCardDisplayInfo(info);
             console.log(`    [${atom.id}] ${info?.name ?? atom.catalogId} (Cost:${info?.cost ?? "?"}${bp}) [${color}]`);
           }
         }
@@ -732,8 +746,7 @@ export class BuddyAgent implements Agent {
     for (const atom of hand) {
       if (hasCardInfo(atom)) {
         const info = this.catalogLookup(atom.catalogId);
-        const bp = info?.bp ? ` BP:${info.bp.join("/")}` : "";
-        const color = COLOR_NAMES[info?.color ?? 6] ?? "?";
+        const { bp, color } = getCardDisplayInfo(info);
         console.log(`  [${atom.id}] ${info?.name ?? atom.catalogId} (Cost:${info?.cost ?? "?"}${bp}) [${color}]`);
       }
     }
