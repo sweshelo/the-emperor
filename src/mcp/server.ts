@@ -188,14 +188,15 @@ async function main() {
 
   // Setup sandbox client if base URL is provided
   const sandboxBaseUrl =
-    process.env.SANDBOX_BASE_URL || process.env.GAME_SERVER_URL?.replace("ws://", "http://").replace("wss://", "https://");
+    process.env.SANDBOX_BASE_URL || process.env.GAME_SERVER_URL;
 
   if (sandboxBaseUrl) {
-    // Remove WebSocket path if present and extract base URL
-    const baseUrl = sandboxBaseUrl.split("?")[0]?.replace(/\/$/, "") || sandboxBaseUrl;
-    const httpBaseUrl = baseUrl.startsWith("ws")
-      ? baseUrl.replace("ws://", "http://").replace("wss://", "https://")
-      : baseUrl;
+    // Remove query string and trailing slash, then convert ws:// to http://
+    const urlWithoutQuery = sandboxBaseUrl.split("?")[0] || sandboxBaseUrl;
+    const cleanUrl = urlWithoutQuery.replace(/\/$/, "") || urlWithoutQuery;
+    const httpBaseUrl = cleanUrl
+      .replace(/^wss:\/\//, "https://")
+      .replace(/^ws:\/\//, "http://");
 
     console.error(`[MCP] Initializing sandbox client: ${httpBaseUrl}`);
     const sandboxClient = new SandboxClient(httpBaseUrl);

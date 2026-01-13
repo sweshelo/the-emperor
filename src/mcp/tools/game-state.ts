@@ -4,7 +4,28 @@
 
 import type { ToolDefinition } from "../types/index.ts";
 import { gameStateManager } from "../../game/state.ts";
-import { catalogService } from "../../catalog/index.ts";
+import { catalogService, type CatalogCard } from "../../catalog/index.ts";
+
+/**
+ * Card atom with catalogId (runtime type for hand/field cards)
+ */
+interface CardAtom {
+  id: string;
+  catalogId?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Check if an atom has a catalogId
+ */
+function hasCardId(atom: unknown): atom is CardAtom {
+  return (
+    typeof atom === "object" &&
+    atom !== null &&
+    "catalogId" in atom &&
+    typeof (atom as CardAtom).catalogId === "string"
+  );
+}
 
 /**
  * Get current game state
@@ -175,13 +196,14 @@ export const getHandDetailsTool: ToolDefinition = {
       };
     }
 
-    // Note: hand is typed as IAtom[] but actually contains ICard[] with catalogId
     const handWithDetails = player.hand.map((atom) => {
-      const cardAtom = atom as any;
-      const card = catalogService.getCard(cardAtom.catalogId);
+      let cardInfo: CatalogCard | null = null;
+      if (hasCardId(atom) && atom.catalogId) {
+        cardInfo = catalogService.getCard(atom.catalogId) ?? null;
+      }
       return {
         ...atom,
-        cardInfo: card,
+        cardInfo,
       };
     });
 
@@ -223,10 +245,12 @@ export const getFieldDetailsTool: ToolDefinition = {
     }
 
     const fieldWithDetails = player.field.map((unit) => {
-      const card = catalogService.getCard(unit.catalogId);
+      const cardInfo = unit.catalogId
+        ? catalogService.getCard(unit.catalogId) ?? null
+        : null;
       return {
         ...unit,
-        cardInfo: card,
+        cardInfo,
       };
     });
 

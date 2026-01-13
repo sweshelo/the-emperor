@@ -134,6 +134,7 @@ export class GameStateManager {
   reset(): void {
     this.currentState = null;
     this.currentChoice = null;
+    this.myPlayerId = null;
     console.log("[GameState] Reset");
   }
 }

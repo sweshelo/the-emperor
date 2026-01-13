@@ -176,16 +176,20 @@ describe("Sandbox Comprehensive Tests", () => {
         reconnect: false,
       });
 
-      let messageReceived = false;
+      const receivedMessages: any[] = [];
       wsClient.onMessage((message) => {
         console.log("Received message:", message.type);
-        messageReceived = true;
+        receivedMessages.push(message);
       });
 
       await wsClient.connect();
 
-      // Wait for connection to stabilize
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      // Wait for connection to stabilize and receive initial messages
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Verify we received at least one message
+      expect(receivedMessages.length).toBeGreaterThan(0);
+      console.log(`✓ Received ${receivedMessages.length} message(s) from server`);
 
       // Get player ID from sync data
       const playerIds = Object.keys(gameState.players);

@@ -6,6 +6,41 @@ import type { ToolDefinition } from "../types/index.ts";
 import { SandboxClient } from "../../sandbox/client.ts";
 import { gameStateManager } from "../../game/state.ts";
 
+/**
+ * Deep merge two objects, recursively merging nested objects
+ */
+function deepMerge<T extends Record<string, unknown>>(
+  target: T,
+  source: Partial<T>
+): T {
+  const result = { ...target };
+
+  for (const key in source) {
+    if (Object.prototype.hasOwnProperty.call(source, key)) {
+      const sourceValue = source[key];
+      const targetValue = result[key];
+
+      if (
+        sourceValue !== null &&
+        typeof sourceValue === "object" &&
+        !Array.isArray(sourceValue) &&
+        targetValue !== null &&
+        typeof targetValue === "object" &&
+        !Array.isArray(targetValue)
+      ) {
+        result[key] = deepMerge(
+          targetValue as Record<string, unknown>,
+          sourceValue as Record<string, unknown>
+        ) as T[Extract<keyof T, string>];
+      } else {
+        result[key] = sourceValue as T[Extract<keyof T, string>];
+      }
+    }
+  }
+
+  return result;
+}
+
 // Sandbox client instance (will be set externally)
 let sandboxClient: SandboxClient | null = null;
 
@@ -310,10 +345,10 @@ export const evaluateMoveTool: ToolDefinition = {
         };
       }
 
-      // Apply modifications if provided
+      // Apply modifications if provided (deep merge to preserve nested structures)
       let testState = currentState;
       if (stateModifications) {
-        testState = { ...currentState, ...stateModifications };
+        testState = deepMerge(currentState, stateModifications);
       }
 
       // Setup sandbox

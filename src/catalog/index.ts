@@ -32,11 +32,47 @@ export class CatalogService {
    * Load catalog data
    */
   private loadCatalog(): void {
-    const cards = catalogData as CatalogCard[];
-    for (const card of cards) {
-      this.catalog.set(card.id, card);
+    try {
+      if (!catalogData) {
+        console.error("[Catalog] Catalog data is not available");
+        return;
+      }
+
+      if (!Array.isArray(catalogData)) {
+        console.error("[Catalog] Catalog data is not an array");
+        return;
+      }
+
+      for (const item of catalogData) {
+        if (!this.isValidCatalogCard(item)) {
+          console.warn(`[Catalog] Skipping invalid card entry:`, item);
+          continue;
+        }
+        this.catalog.set(item.id, item as CatalogCard);
+      }
+      console.log(`[Catalog] Loaded ${this.catalog.size} cards`);
+    } catch (error) {
+      console.error("[Catalog] Failed to load catalog data:", error);
     }
-    console.log(`[Catalog] Loaded ${this.catalog.size} cards`);
+  }
+
+  /**
+   * Validate if an item has required CatalogCard fields
+   */
+  private isValidCatalogCard(item: unknown): item is CatalogCard {
+    if (typeof item !== "object" || item === null) {
+      return false;
+    }
+    const obj = item as Record<string, unknown>;
+    return (
+      typeof obj.id === "string" &&
+      typeof obj.name === "string" &&
+      typeof obj.rarity === "string" &&
+      typeof obj.cost === "number" &&
+      typeof obj.color === "number" &&
+      typeof obj.ability === "string" &&
+      typeof obj.type === "string"
+    );
   }
 
   /**
