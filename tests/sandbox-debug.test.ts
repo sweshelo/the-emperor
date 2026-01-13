@@ -359,7 +359,7 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
       console.log(`  Hand: ${beforeSummonHand.length}, Field: ${beforeSummonField.length}`);
 
       unitDrive(wsClient, playerId, createdCard.id);
-      await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait longer for effect to resolve
+      await new Promise((resolve) => setTimeout(resolve, 1500)); // Wait for effect to resolve
 
       const afterSummon = syncMessages[syncMessages.length - 1];
       const afterSummonHand = afterSummon?.payload?.body?.players?.[playerId]?.hand || [];
