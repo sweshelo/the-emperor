@@ -150,20 +150,36 @@ export class SandboxClient {
     round: number;
     turn: number;
   }> {
-    console.log("[Sandbox] Creating sandbox room...");
-    const createResult = await this.createRoom();
+    let roomCreated = false;
 
-    console.log("[Sandbox] Loading game state...");
-    const loadResult = await this.loadState(state);
+    try {
+      console.log("[Sandbox] Creating sandbox room...");
+      const createResult = await this.createRoom();
+      roomCreated = true;
 
-    console.log("[Sandbox] Starting sandbox game...");
-    await this.startGame();
+      console.log("[Sandbox] Loading game state...");
+      const loadResult = await this.loadState(state);
 
-    return {
-      roomId: createResult.roomId,
-      round: loadResult.round,
-      turn: loadResult.turn,
-    };
+      console.log("[Sandbox] Starting sandbox game...");
+      await this.startGame();
+
+      return {
+        roomId: createResult.roomId,
+        round: loadResult.round,
+        turn: loadResult.turn,
+      };
+    } catch (error) {
+      // Clean up orphaned room if creation succeeded but subsequent steps failed
+      if (roomCreated) {
+        try {
+          console.log("[Sandbox] Cleaning up orphaned room after failure...");
+          await this.destroyRoom();
+        } catch (cleanupError) {
+          console.error("[Sandbox] Failed to clean up room:", cleanupError);
+        }
+      }
+      throw error;
+    }
   }
 
   /**
