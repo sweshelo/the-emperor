@@ -543,8 +543,7 @@ export class BuddyAgent implements Agent {
         return null; // These are handled separately
 
       default:
-        this.tui.addMessage("error", `Unknown command: ${command}`);
-        this.tui.addMessage("system", "Type 'help' for available commands");
+        // Return null for unknown commands - they will be treated as pilot comments
         return null;
     }
   }
@@ -708,12 +707,15 @@ export class BuddyAgent implements Agent {
         continue;
       }
 
-      // Handle AI advisor commands
+      // Handle AI advisor commands (starting with /)
       if (input.startsWith("/")) {
         const handled = await this.handleAdvisorCommand(input, context);
         if (handled) {
           continue;
         }
+        // Unknown slash command - show error
+        this.tui.addMessage("error", `Unknown command: ${input.split(/\s+/)[0]}`);
+        continue;
       }
 
       const action = this.parseCommand(input, context);
@@ -725,6 +727,16 @@ export class BuddyAgent implements Agent {
           });
         }
         return action;
+      }
+
+      // Input is not a game command - treat as pilot comment
+      if (this.threadManager) {
+        this.threadManager.addPilotComment(input);
+        this.tui.addMessage("user", `[パイロット] ${input}`);
+      } else {
+        // No thread manager - show as unknown command
+        this.tui.addMessage("error", `Unknown command: ${input.split(/\s+/)[0]}`);
+        this.tui.addMessage("system", "Type 'help' for available commands");
       }
     }
   }

@@ -59,6 +59,28 @@ export interface ThreadManagerConfig {
   debounceMs?: number;
   systemPrompt?: string;
   onAnalysis?: (analysis: string) => void;
+  onToolResult?: (toolName: string, result: string) => void;
+}
+
+/**
+ * Tool input types
+ */
+interface LookupCardInput {
+  catalogId: string;
+}
+
+/**
+ * Type guard for lookup_card input
+ */
+function isLookupCardInput(input: unknown): input is LookupCardInput {
+  if (typeof input !== "object" || input === null) {
+    return false;
+  }
+  if (!("catalogId" in input)) {
+    return false;
+  }
+  const obj = input;
+  return typeof obj.catalogId === "string";
 }
 
 /**
@@ -69,13 +91,46 @@ export class ThreadManager {
   private model: string;
   private debounceMs: number;
   private systemPrompt: string;
+  private gameRules: string = "";
   private thread: ThreadMessage[] = [];
   private pendingMessages: string[] = [];
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
   private catalogLookup: (id: string) => CatalogCard | undefined;
   private previousState: GameState | null = null;
+  private currentState: GameState | null = null;
   private onAnalysis: ((analysis: string) => void) | null = null;
+  private onToolResult: ((toolName: string, result: string) => void) | null = null;
   private isAnalyzing = false;
+  private rulesLoaded = false;
+
+  /**
+   * Tool definitions for the AI
+   */
+  private readonly tools: Anthropic.Tool[] = [
+    {
+      name: "lookup_card",
+      description: "カタログIDからカード情報を取得します。カード名、コスト、BP、能力テキストなどが分かります。",
+      input_schema: {
+        type: "object",
+        properties: {
+          catalogId: {
+            type: "string",
+            description: "カタログID (例: 1-2-001, PR-028)",
+          },
+        },
+        required: ["catalogId"],
+      },
+    },
+    {
+      name: "get_game_state_summary",
+      description: "現在のゲーム状態のサマリーを取得します。両プレイヤーのライフ、CP、フィールド状況などが分かります。",
+      input_schema: {
+        type: "object",
+        properties: {},
+        required: [],
+      },
+    },
+  ];
 
   constructor(
     config: ThreadManagerConfig,
@@ -86,23 +141,57 @@ export class ThreadManager {
     });
     this.model = config.model ?? "claude-3-5-haiku-20241022";
     this.debounceMs = config.debounceMs ?? 1000;
-    this.systemPrompt = config.systemPrompt ?? this.getDefaultSystemPrompt();
+    this.systemPrompt = config.systemPrompt ?? "";
     this.catalogLookup = catalogLookup;
     this.onAnalysis = config.onAnalysis ?? null;
+    this.onToolResult = config.onToolResult ?? null;
+
+    // Load game rules asynchronously
+    this.loadGameRules().catch((err) => {
+      console.error("[ThreadManager] Failed to load game rules:", err);
+    });
+  }
+
+  /**
+   * Load game rules from file
+   */
+  private async loadGameRules(): Promise<void> {
+    try {
+      const file = Bun.file("./src/data/docs/game-rules.md");
+      this.gameRules = await file.text();
+      this.rulesLoaded = true;
+      console.log("[ThreadManager] Game rules loaded successfully");
+    } catch (error) {
+      console.error("[ThreadManager] Failed to load game rules:", error);
+      this.gameRules = "";
+    }
   }
 
   /**
    * Get default system prompt for game analysis
    */
-  private getDefaultSystemPrompt(): string {
-    return `あなたはCODE OF JOKERの対戦実況・分析AIです。
+  private getFullSystemPrompt(): string {
+    const basePrompt = this.systemPrompt || `あなたはCODE OF JOKERの対戦実況・分析AIです。
 ゲームの状態変化を観察し、何が起きたかを簡潔に日本語で解説してください。
 
-注意点：
+## あなたの役割
 - カード効果やゲームの流れを分かりやすく説明
 - 戦略的な観点からのコメントも適宜追加
 - パイロット（プレイヤー）からのコメントがあれば、それを踏まえて分析を修正
-- 簡潔に、1-3文程度で回答`;
+- 簡潔に、1-3文程度で回答
+
+## ツールの使用
+- カード情報が必要な場合は lookup_card ツールを使用
+- ゲーム状態の詳細が必要な場合は get_game_state_summary ツールを使用`;
+
+    if (this.gameRules) {
+      return `${basePrompt}
+
+## ゲームルール
+${this.gameRules}`;
+    }
+
+    return basePrompt;
   }
 
   /**
@@ -126,6 +215,7 @@ export class ThreadManager {
       }
     }
     this.previousState = structuredClone(newState);
+    this.currentState = newState;
   }
 
   /**
@@ -162,6 +252,65 @@ export class ThreadManager {
   }
 
   /**
+   * Execute a tool call
+   */
+  private executeTool(toolName: string, toolInput: unknown): string {
+    switch (toolName) {
+      case "lookup_card": {
+        if (!isLookupCardInput(toolInput)) {
+          return "エラー: catalogIdが必要です";
+        }
+        const card = this.catalogLookup(toolInput.catalogId);
+        if (!card) {
+          return `カード ${toolInput.catalogId} が見つかりませんでした`;
+        }
+        return JSON.stringify(card, null, 2);
+      }
+
+      case "get_game_state_summary": {
+        if (!this.currentState) {
+          return "ゲーム状態がまだ取得されていません";
+        }
+        return this.formatGameStateSummary(this.currentState);
+      }
+
+      default:
+        return `Unknown tool: ${toolName}`;
+    }
+  }
+
+  /**
+   * Format game state as summary
+   */
+  private formatGameStateSummary(state: GameState): string {
+    const lines: string[] = [];
+    lines.push(`ラウンド: ${state.game.round}, ターン: ${state.game.turn}`);
+
+    for (const [playerId, player] of Object.entries(state.players)) {
+      const label = playerId.length > 8 ? playerId.slice(0, 8) : playerId;
+      lines.push(`\n--- ${label} ---`);
+      lines.push(`ライフ: ${player.life.current}/${player.life.max}`);
+      lines.push(`CP: ${player.cp.current}/${player.cp.max}`);
+      lines.push(`手札: ${player.hand.length}枚`);
+      lines.push(`トリガー: ${player.trigger.length}枚`);
+      lines.push(`JOKERゲージ: ${player.joker.gauge}%`);
+
+      if (player.field.length > 0) {
+        lines.push("フィールド:");
+        for (const unit of player.field) {
+          const info = this.catalogLookup(unit.catalogId);
+          const status = unit.active ? "行動可能" : "行動済み";
+          lines.push(`  - ${info?.name ?? unit.catalogId} BP:${unit.bp} (${status})`);
+        }
+      } else {
+        lines.push("フィールド: 空");
+      }
+    }
+
+    return lines.join("\n");
+  }
+
+  /**
    * Execute analysis by calling the API
    */
   private async executeAnalysis(): Promise<void> {
@@ -185,18 +334,64 @@ export class ThreadManager {
       this.thread.push(userMessage);
 
       // Build messages for API call
-      const apiMessages = this.thread.map((msg) => ({
+      const apiMessages: Anthropic.MessageParam[] = this.thread.map((msg) => ({
         role: msg.role,
         content: msg.content,
       }));
 
-      // Call API
-      const response = await this.client.messages.create({
+      // Call API with tools
+      let response = await this.client.messages.create({
         model: this.model,
-        max_tokens: 256,
-        system: this.systemPrompt,
+        max_tokens: 1024,
+        system: this.getFullSystemPrompt(),
+        tools: this.tools,
         messages: apiMessages,
       });
+
+      // Handle tool use loop
+      while (response.stop_reason === "tool_use") {
+        const toolUseBlocks = response.content.filter(
+          (block): block is Anthropic.ToolUseBlock => block.type === "tool_use"
+        );
+
+        const toolResults: Anthropic.ToolResultBlockParam[] = [];
+
+        for (const toolUse of toolUseBlocks) {
+          const result = this.executeTool(toolUse.name, toolUse.input);
+
+          // Notify about tool result
+          if (this.onToolResult) {
+            this.onToolResult(toolUse.name, result);
+          }
+
+          toolResults.push({
+            type: "tool_result",
+            tool_use_id: toolUse.id,
+            content: result,
+          });
+        }
+
+        // Add assistant response with tool use to messages
+        apiMessages.push({
+          role: "assistant",
+          content: response.content,
+        });
+
+        // Add tool results
+        apiMessages.push({
+          role: "user",
+          content: toolResults,
+        });
+
+        // Continue the conversation
+        response = await this.client.messages.create({
+          model: this.model,
+          max_tokens: 1024,
+          system: this.getFullSystemPrompt(),
+          tools: this.tools,
+          messages: apiMessages,
+        });
+      }
 
       // Extract response text
       const responseText = this.extractText(response.content);
@@ -443,6 +638,7 @@ export class ThreadManager {
     this.thread = [];
     this.pendingMessages = [];
     this.previousState = null;
+    this.currentState = null;
     if (this.debounceTimer) {
       clearTimeout(this.debounceTimer);
       this.debounceTimer = null;
@@ -468,5 +664,12 @@ export class ThreadManager {
    */
   getPendingCount(): number {
     return this.pendingMessages.length;
+  }
+
+  /**
+   * Check if game rules are loaded
+   */
+  areRulesLoaded(): boolean {
+    return this.rulesLoaded;
   }
 }
