@@ -7,7 +7,7 @@ import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 import type { DecisionContext, ParsedAction, AgentConfig, Agent } from "../types/agent.ts";
 import type { IAtom } from "../../suit/types/game/card/index.ts";
 import type { CatalogCard } from "../schemas/catalog.ts";
-import { SYSTEM_PROMPT, buildDecisionPrompt, buildMulliganPrompt } from "./prompts.ts";
+import { buildSystemPrompt, buildDecisionPrompt, buildMulliganPrompt } from "./prompts.ts";
 import { parseClaudeResponse } from "./actions.ts";
 
 /**
@@ -33,6 +33,7 @@ export class ClaudeAgent implements Agent {
   private config: ResolvedConfig;
   private conversationHistory: MessageParam[] = [];
   private catalogLookup: (id: string) => CatalogCard | undefined;
+  private systemPromptCache: string | null = null;
 
   constructor(
     private name: string,
@@ -60,11 +61,23 @@ export class ClaudeAgent implements Agent {
   }
 
   /**
+   * Get system prompt (loads from files on first call, then caches)
+   */
+  private async getSystemPrompt(): Promise<string> {
+    if (this.systemPromptCache === null) {
+      console.log("[ClaudeAgent] Loading system prompt from documentation files...");
+      this.systemPromptCache = await buildSystemPrompt();
+    }
+    return this.systemPromptCache;
+  }
+
+  /**
    * Decide the next action based on the current game context
    */
   async decideAction(context: DecisionContext): Promise<ParsedAction> {
     // Build the prompt
     const userPrompt = buildDecisionPrompt(context, this.catalogLookup);
+    const systemPrompt = await this.getSystemPrompt();
 
     console.log("[ClaudeAgent] Requesting decision from Claude...");
 
@@ -72,7 +85,7 @@ export class ClaudeAgent implements Agent {
     const response = await this.client.messages.create({
       model: this.config.model,
       max_tokens: this.config.maxTokens,
-      system: SYSTEM_PROMPT,
+      system: systemPrompt,
       messages: [
         ...this.conversationHistory,
         { role: "user", content: userPrompt },
@@ -98,13 +111,14 @@ export class ClaudeAgent implements Agent {
    */
   async decideMulligan(hand: IAtom[], playerId: string): Promise<ParsedAction> {
     const prompt = buildMulliganPrompt(hand, playerId, this.catalogLookup);
+    const systemPrompt = await this.getSystemPrompt();
 
     console.log("[ClaudeAgent] Requesting mulligan decision...");
 
     const response = await this.client.messages.create({
       model: this.config.model,
       max_tokens: this.config.maxTokens,
-      system: SYSTEM_PROMPT,
+      system: systemPrompt,
       messages: [{ role: "user", content: prompt }],
     });
 

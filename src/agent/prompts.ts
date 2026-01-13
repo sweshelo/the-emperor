@@ -6,6 +6,8 @@ import type { DecisionContext } from "../types/agent.ts";
 import type { IPlayer, IUnit, ICard, ChoicesMessage } from "../types/game.ts";
 import type { CatalogCard } from "../schemas/catalog.ts";
 import type { IAtom } from "../../suit/types/game/card/index.ts";
+import { join } from "node:path";
+import { readdirSync } from "node:fs";
 
 /**
  * Type guard to check if an IAtom has catalogId (is actually an ICard)
@@ -16,37 +18,36 @@ function hasCardInfo(atom: IAtom): atom is ICard {
 }
 
 /**
- * System prompt explaining game rules and AI behavior
+ * Directory containing documentation files for the system prompt
  */
-export const SYSTEM_PROMPT = `You are an AI agent playing CODE OF JOKER, a Japanese digital card game.
+const DOCS_DIR = join(import.meta.dir, "../data/docs");
 
-## Game Rules
+/**
+ * Load all documentation files from data/docs directory
+ * Returns concatenated content of all .md files
+ */
+export async function loadSystemPromptDocs(): Promise<string> {
+  const files = readdirSync(DOCS_DIR).filter((f) => f.endsWith(".md"));
 
-### Objective
-Reduce your opponent's life to 0 to win. Each player starts with 8 life points.
+  const contents: string[] = [];
+  for (const file of files) {
+    const filePath = join(DOCS_DIR, file);
+    const content = await Bun.file(filePath).text();
+    contents.push(content);
+  }
 
-### Card Types
-- **Unit**: Combat cards with BP (Battle Power). Summoned to the field to attack.
-- **Trigger**: Set face-down, activate automatically when conditions are met.
-- **Intercept**: Set face-down, can interrupt opponent's attacks.
-- **Evolution**: Played on existing units to power them up.
-- **JOKER**: Special ability cards using JOKER gauge.
+  return contents.join("\n\n---\n\n");
+}
 
-### Resources
-- **CP (Card Points)**: Used to play cards. Starts at 2, increases by 1 each turn (max 7).
-- **Life**: Your health points. Game ends when reduced to 0.
-- **JOKER Gauge**: Accumulates to use JOKER abilities.
+/**
+ * Build the complete system prompt by loading documentation
+ */
+export async function buildSystemPrompt(): Promise<string> {
+  const docs = await loadSystemPromptDocs();
 
-### Turn Structure
-1. Draw phase (automatic)
-2. Main phase: Play cards, attack with units
-3. End turn
+  return `You are an AI agent playing CODE OF JOKER, a Japanese digital card game.
 
-### Combat
-- Units can attack once per turn after being summoned (summoning sickness on first turn)
-- Attacking directly damages opponent's life
-- Opponent can block with their units
-- When units battle, the one with lower BP is destroyed
+${docs}
 
 ## Response Format
 
@@ -60,13 +61,8 @@ You MUST respond with a valid JSON object in the following format:
   }
 }
 \`\`\`
-
-## Strategy Tips
-- Maintain board presence with units
-- Consider CP efficiency when playing cards
-- Use triggers and intercepts defensively
-- Attack when you have board advantage
 `;
+}
 
 /**
  * Color ID to name mapping
