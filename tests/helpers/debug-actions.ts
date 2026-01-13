@@ -250,6 +250,33 @@ export async function waitForDisplayEffect(
 }
 
 /**
+ * Wait for a Defrost message (indicates player can act again after effect resolution)
+ *
+ * @param messages Array of received messages
+ * @param afterIndex Start searching from this index
+ * @param timeout Timeout in milliseconds (default: 5000)
+ * @returns The Defrost message
+ */
+export async function waitForDefrost(
+  messages: any[],
+  afterIndex: number = 0,
+  timeout: number = 5000
+): Promise<any> {
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < timeout) {
+    for (let i = afterIndex; i < messages.length; i++) {
+      if (messages[i]?.payload?.type === "Defrost") {
+        return messages[i];
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  throw new Error(`Timeout waiting for Defrost message`);
+}
+
+/**
  * Wait for the next Sync message after a specific point
  *
  * @param messages Array of received messages
