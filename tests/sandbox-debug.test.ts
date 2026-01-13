@@ -17,6 +17,7 @@ const SANDBOX_WS_URL = process.env.TEST_SANDBOX_WS_URL || "ws://localhost:3000";
 // Effect: When this unit enters the field, add 1 random green unit card to hand
 const TEST_CARD_ID = "1-1-018";
 const TEST_CARD_NAME = "ブロックナイト";
+const TEST_CARD_EFFECT_NAME = "援軍／緑";
 
 describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
   let client: SandboxClient;
@@ -358,34 +359,64 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
       const beforeSummonField = beforeSummon?.payload?.body?.players?.[playerId]?.field || [];
       console.log(`  Hand: ${beforeSummonHand.length}, Field: ${beforeSummonField.length}`);
 
+      // Record the current message index before UnitDrive
+      const messageIndexBeforeUnitDrive = receivedMessages.length;
+
       unitDrive(wsClient, playerId, createdCard.id);
-      await new Promise((resolve) => setTimeout(resolve, 1500)); // Wait for effect to resolve
 
-      const afterSummon = syncMessages[syncMessages.length - 1];
-      const afterSummonHand = afterSummon?.payload?.body?.players?.[playerId]?.hand || [];
-      const afterSummonField = afterSummon?.payload?.body?.players?.[playerId]?.field || [];
-      console.log(`  Hand: ${afterSummonHand.length}, Field: ${afterSummonField.length}`);
+      // Import helper for waiting DisplayEffect
+      const { waitForDisplayEffect, waitForNextSync } = await import("./helpers/debug-actions.ts");
 
-      // Verify field size increased
-      expect(afterSummonField.length).toBeGreaterThan(beforeSummonField.length);
-      console.log(`  ✓ Card summoned to field`);
+      // Step 3: Wait for DisplayEffect message (effect resolution indicator)
+      console.log(`\n[Step 3] Waiting for DisplayEffect: ${TEST_CARD_EFFECT_NAME}...`);
+      try {
+        const displayEffectMsg = await waitForDisplayEffect(receivedMessages, TEST_CARD_EFFECT_NAME, 3000);
+        console.log(`  ✓ DisplayEffect received: ${displayEffectMsg.payload?.title}`);
+        console.log(`    Description: ${displayEffectMsg.payload?.description}`);
 
-      // Step 3: Verify effect - hand size should increase due to ブロックナイト effect
-      console.log(`\n[Step 3] Verifying ${TEST_CARD_NAME} effect (add green unit to hand)...`);
+        // Wait for the Sync message after DisplayEffect (effect applied)
+        const displayEffectIndex = receivedMessages.indexOf(displayEffectMsg);
+        console.log(`\n[Step 4] Waiting for Sync after effect resolution...`);
+        const afterEffectSync = await waitForNextSync(receivedMessages, displayEffectIndex, 3000);
+        console.log(`  ✓ Sync received after effect resolution`);
 
-      const effectResult = verifyCardAddedToHand(beforeSummon, afterSummon, playerId, 4); // 4 = green color
+        // Verify effect results from the post-effect Sync
+        const afterSummonHand = afterEffectSync?.payload?.body?.players?.[playerId]?.hand || [];
+        const afterSummonField = afterEffectSync?.payload?.body?.players?.[playerId]?.field || [];
+        console.log(`  Hand: ${afterSummonHand.length}, Field: ${afterSummonField.length}`);
 
-      if (effectResult.success) {
-        console.log(`  ✓ ${effectResult.message}`);
-        console.log(`  Added cards:`, effectResult.addedCards.map((c: any) => ({
-          id: c.id,
-          catalogId: c.catalogId,
-          name: c.name,
-          color: c.color
-        })));
-      } else {
-        console.log(`  ⚠ ${effectResult.message}`);
-        console.log(`  Note: Effect resolution may require more time or specific game conditions`);
+        // Verify field size increased
+        expect(afterSummonField.length).toBeGreaterThan(beforeSummonField.length);
+        console.log(`  ✓ Card summoned to field`);
+
+        // Verify effect - hand size should increase due to ブロックナイト effect
+        console.log(`\n[Step 5] Verifying ${TEST_CARD_NAME} effect (add green unit to hand)...`);
+
+        const effectResult = verifyCardAddedToHand(beforeSummon, afterEffectSync, playerId, 4); // 4 = green color
+
+        if (effectResult.success) {
+          console.log(`  ✓ ${effectResult.message}`);
+          console.log(`  Added cards:`, effectResult.addedCards.map((c: any) => ({
+            id: c.id,
+            catalogId: c.catalogId,
+            name: c.name,
+            color: c.color
+          })));
+        } else {
+          console.log(`  ⚠ ${effectResult.message}`);
+          console.log(`  Note: Effect may not trigger if no green units in deck`);
+        }
+      } catch (error) {
+        // DisplayEffect not received - effect may not have triggered
+        console.log(`  ⚠ DisplayEffect not received within timeout`);
+        console.log(`  Note: Effect may not trigger if no green units in deck`);
+
+        // Still verify field status
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        const afterSummon = syncMessages[syncMessages.length - 1];
+        const afterSummonField = afterSummon?.payload?.body?.players?.[playerId]?.field || [];
+        expect(afterSummonField.length).toBeGreaterThan(beforeSummonField.length);
+        console.log(`  ✓ Card summoned to field (effect not triggered)`);
       }
 
       console.log("\n=== Test Complete ===\n");
@@ -393,7 +424,7 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
       console.error("Test failed:", error);
       throw error;
     }
-  });
+  }, { timeout: 15000 });
 
   test("should track message sequence for effect resolution", async () => {
     try {

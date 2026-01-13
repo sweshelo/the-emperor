@@ -187,6 +187,61 @@ export async function waitForMessage(
 }
 
 /**
+ * Wait for a DisplayEffect message with a specific effect title
+ *
+ * @param messages Array of received messages
+ * @param effectTitle The effect title to wait for (e.g., "援軍／緑")
+ * @param timeout Timeout in milliseconds (default: 5000)
+ * @returns The matched DisplayEffect message
+ */
+export async function waitForDisplayEffect(
+  messages: any[],
+  effectTitle: string,
+  timeout: number = 5000
+): Promise<any> {
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < timeout) {
+    const message = messages.find(
+      (m) => m.payload?.type === "DisplayEffect" && m.payload?.title === effectTitle
+    );
+    if (message) {
+      return message;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  throw new Error(`Timeout waiting for DisplayEffect: ${effectTitle}`);
+}
+
+/**
+ * Wait for the next Sync message after a specific point
+ *
+ * @param messages Array of received messages
+ * @param afterIndex Start searching from this index
+ * @param timeout Timeout in milliseconds (default: 5000)
+ * @returns The next Sync message
+ */
+export async function waitForNextSync(
+  messages: any[],
+  afterIndex: number,
+  timeout: number = 5000
+): Promise<any> {
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < timeout) {
+    for (let i = afterIndex + 1; i < messages.length; i++) {
+      if (messages[i]?.payload?.type === "Sync") {
+        return messages[i];
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  throw new Error(`Timeout waiting for next Sync message after index ${afterIndex}`);
+}
+
+/**
  * Wait for a condition to be true
  *
  * @param condition Function that returns true when condition is met
