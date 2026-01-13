@@ -1,0 +1,499 @@
+{
+  "action": {
+    "type": "sync",
+    "handler": "client"
+  },
+  "payload": {
+    "type": "Sync",
+    "body": {
+      "rule": {
+        "system": {
+          "round": 10,
+          "draw": {
+            "top": 2,
+            "override": 1,
+            "mulligan": 4
+          },
+          "handicap": {
+            "draw": true,
+            "cp": true,
+            "attack": true
+          },
+          "cp": {
+            "init": 2,
+            "increase": 1,
+            "max": 7,
+            "ceil": 12,
+            "carryover": false
+          }
+        },
+        "player": {
+          "max": {
+            "life": 8,
+            "hand": 7,
+            "trigger": 4,
+            "field": 5
+          }
+        },
+        "misc": {
+          "strictOverride": false,
+          "suicideJoker": false
+        },
+        "debug": {
+          "enable": false,
+          "reveal": {
+            "opponent": {
+              "deck": true,
+              "hand": true,
+              "trigger": true,
+              "trash": false
+            },
+            "self": {
+              "deck": true
+            }
+          }
+        }
+      },
+      "game": {
+        "round": 1,
+        "turn": 1
+      },
+      "players": {
+        "q3nQoCOikYRPHCXWp0y_m": {
+          "id": "q3nQoCOikYRPHCXWp0y_m",
+          "name": "エージェント候補生",
+          "library": [
+            "1-2-001",
+            "1-2-001",
+            "1-2-003",
+            "1-2-003",
+            "1-2-004",
+            "1-2-004",
+            "1-2-007",
+            "1-2-007",
+            "1-2-101",
+            "1-2-101",
+            "1-2-104",
+            "1-2-104",
+            "1-2-106",
+            "1-2-106",
+            "PR-028",
+            "PR-028",
+            "1-2-043",
+            "1-2-043",
+            "1-2-049",
+            "1-2-049",
+            "1-2-051",
+            "1-2-051",
+            "1-2-124",
+            "PR-016",
+            "PR-016",
+            "PR-031",
+            "PR-031",
+            "1-2-122",
+            "1-2-122",
+            "1-2-057",
+            "1-2-057",
+            "PR-032",
+            "1-2-078",
+            "1-2-141",
+            "PR-067",
+            "1-2-099",
+            "1-2-099",
+            "1-2-148",
+            "1-2-071",
+            "1-2-071"
+          ],
+          "deck": [
+            {
+              "id": "4d38df9e-c66e-4ade-b683-3cb3cb3fac74"
+            },
+            {
+              "id": "9e773c56-e565-4bfe-9e18-5a6ef5405cd2"
+            },
+            {
+              "id": "e4db9212-84ee-401f-ba7b-18274fb4b2cf"
+            },
+            {
+              "id": "4bf5a8c1-e7a8-4dc6-b6fe-b36b209abe68"
+            },
+            {
+              "id": "caccdeed-8900-4329-9921-c3bade1cf3ba"
+            },
+            {
+              "id": "7b923fdd-29a3-4d78-82a7-3dce996d9270"
+            },
+            {
+              "id": "14eee8ee-03e5-4cef-8670-aeafee68b48a"
+            },
+            {
+              "id": "c14df3d2-cb1b-4795-96c4-9d5c3b7ce5c4"
+            },
+            {
+              "id": "14485350-c3a8-42ab-8774-1af78650b7c6"
+            },
+            {
+              "id": "dc72bef8-9233-4759-999d-148298581fe2"
+            },
+            {
+              "id": "c02d7036-4c2b-4fac-894e-5643b72dd84a"
+            },
+            {
+              "id": "039ddef0-a27e-4b70-bec2-48bdad2a3fc1"
+            },
+            {
+              "id": "21c042f9-c5ac-4749-95fd-14628942d13a"
+            },
+            {
+              "id": "b71cd7af-3bc9-4cba-baba-bc92b3052999"
+            },
+            {
+              "id": "afe86da5-0ec1-4b1c-812a-f74680669e21"
+            },
+            {
+              "id": "abd684e2-ef6e-4f8e-bd40-30a1c7e67245"
+            },
+            {
+              "id": "62fbdbe0-ff1b-4900-a86b-debc8ac551b0"
+            },
+            {
+              "id": "00be65b4-b1fc-48d3-a5a6-e2d71ff7986d"
+            },
+            {
+              "id": "4b1e87a8-a64c-4e48-8d3e-876d36b15eb5"
+            },
+            {
+              "id": "9e81b3b2-efb8-450f-ba9f-9cd7391587e2"
+            },
+            {
+              "id": "fae32038-5437-416c-8363-b99ac7efdf3f"
+            },
+            {
+              "id": "e4e52ade-d9b6-42b1-a496-25e20763421f"
+            },
+            {
+              "id": "d821a5da-d073-4cab-a4a4-277687b8a30c"
+            },
+            {
+              "id": "29330d35-564c-45d3-b61c-002f086eeb78"
+            },
+            {
+              "id": "e2d289ee-6469-497c-b7b4-c27f8dbfedf6"
+            },
+            {
+              "id": "fb7572c3-14c1-4e46-8da0-e1b04091cbf5"
+            },
+            {
+              "id": "e25dd734-cf76-4dd6-ac66-67f283c28845"
+            },
+            {
+              "id": "8374f182-d0bf-44d0-82c4-2359c6c9abb0"
+            },
+            {
+              "id": "3bd673af-a584-41de-8c6e-c7d59368f409"
+            },
+            {
+              "id": "d70f1224-1e36-4825-81cf-cdab0fac2c0e"
+            },
+            {
+              "id": "f202fa30-190e-4108-9d4c-97621a049712"
+            },
+            {
+              "id": "174cb434-6adc-4dbf-a56a-6f8ded95d0f5"
+            },
+            {
+              "id": "db465849-4720-4e42-a9d2-3d45b1da13a5"
+            },
+            {
+              "id": "fec7f277-60b4-4052-adb6-b9723445c0e7"
+            },
+            {
+              "id": "46e188fe-3073-4d84-b14f-6919f595647b"
+            },
+            {
+              "id": "734521ef-c2d5-42b6-865e-46a874975ac3"
+            }
+          ],
+          "hand": [
+            {
+              "id": "b61c0277-c781-415b-8198-75c473313051"
+            },
+            {
+              "id": "503f73ae-2cfd-4413-a022-2b3c0ddc46cf"
+            },
+            {
+              "id": "b64058dd-5dae-4981-a05b-1ab1da6ec12b"
+            },
+            {
+              "id": "6d50bcc0-2a1c-486f-b280-75106f45a49f"
+            }
+          ],
+          "trash": [],
+          "delete": [],
+          "field": [],
+          "trigger": [],
+          "called": [],
+          "joker": {
+            "card": [
+              {
+                "id": "4d0b82c5-d88d-42bc-b500-8032f60a221a",
+                "catalogId": "ルインリード",
+                "chara": "THE HERMIT",
+                "cost": 1,
+                "isAvailable": false,
+                "lv": 1
+              },
+              {
+                "id": "89554e25-f65d-4702-9d9c-a02f8a2e0f54",
+                "catalogId": "ソウルエクスキューション",
+                "chara": "THE HIGH PRIESTESS",
+                "cost": 1,
+                "isAvailable": false,
+                "lv": 1
+              }
+            ],
+            "gauge": 0
+          },
+          "cp": {
+            "current": 0,
+            "max": 0
+          },
+          "life": {
+            "current": 8,
+            "max": 8
+          }
+        },
+        "x5pCmrjJdspAtJYU6oxnx": {
+          "id": "x5pCmrjJdspAtJYU6oxnx",
+          "name": "エージェント候補生",
+          "library": [
+            "1-2-001",
+            "1-2-001",
+            "1-2-003",
+            "1-2-003",
+            "1-2-004",
+            "1-2-004",
+            "1-2-007",
+            "1-2-007",
+            "1-2-101",
+            "1-2-101",
+            "1-2-104",
+            "1-2-104",
+            "1-2-106",
+            "1-2-106",
+            "PR-028",
+            "PR-028",
+            "1-2-043",
+            "1-2-043",
+            "1-2-049",
+            "1-2-049",
+            "1-2-051",
+            "1-2-051",
+            "1-2-124",
+            "PR-016",
+            "PR-016",
+            "PR-031",
+            "PR-031",
+            "1-2-122",
+            "1-2-122",
+            "1-2-057",
+            "1-2-057",
+            "PR-032",
+            "1-2-078",
+            "1-2-141",
+            "PR-067",
+            "1-2-099",
+            "1-2-099",
+            "1-2-148",
+            "1-2-071",
+            "1-2-071"
+          ],
+          "deck": [
+            {
+              "id": "c2b05cf5-1ea3-4140-8266-158775f16769"
+            },
+            {
+              "id": "09e1a0b5-3950-41bc-b5b2-5991c020fd06"
+            },
+            {
+              "id": "e24ef651-450c-464e-b6c7-43f384437336"
+            },
+            {
+              "id": "578ff8db-f8c4-4276-94b6-dad846a66a8f"
+            },
+            {
+              "id": "eba9f4c5-e188-43c7-8bee-826c07b176d6"
+            },
+            {
+              "id": "de88e2d0-cd5e-44dc-a20a-c80088de7191"
+            },
+            {
+              "id": "d3664184-7b75-4893-a321-dba2855cd1e4"
+            },
+            {
+              "id": "1ab19574-4096-456b-8b0a-81bc309f4b7c"
+            },
+            {
+              "id": "9afa60f8-08f6-4214-adcb-97088d97330c"
+            },
+            {
+              "id": "cf2eb3a0-9cff-483c-890a-a844e7cbe809"
+            },
+            {
+              "id": "267dae4f-49a6-49fb-8b76-2cd5dfe42e7c"
+            },
+            {
+              "id": "166fe25e-5713-49ff-8737-ede95f914d13"
+            },
+            {
+              "id": "b16fae02-f65d-4c68-a42d-80b44034230e"
+            },
+            {
+              "id": "2fc8b61a-4216-4851-b188-4be6103ce762"
+            },
+            {
+              "id": "08b681e8-4604-4c3f-9853-223962749e9d"
+            },
+            {
+              "id": "53137d29-37f7-4e5e-8ada-de0f7d8012d6"
+            },
+            {
+              "id": "81b6b9fb-7206-459e-9f22-1b7b947c1d48"
+            },
+            {
+              "id": "255ed535-cc81-4057-9b5f-21625738adab"
+            },
+            {
+              "id": "0295725e-d7f5-45af-a439-5c24337daf9a"
+            },
+            {
+              "id": "42179d55-0dd3-4615-a39c-3147e4526486"
+            },
+            {
+              "id": "1ed97f17-9141-48a1-a2c8-60586009bf13"
+            },
+            {
+              "id": "afb51575-581b-4782-a36a-aa8fbd0bf496"
+            },
+            {
+              "id": "d6cca83e-8ffc-4c11-9d7b-f0292a515639"
+            },
+            {
+              "id": "4eb89612-0bc7-41b5-a5e3-9cea8ad7774a"
+            },
+            {
+              "id": "1b1e7ad6-6ca2-4951-9966-b75da6df322b"
+            },
+            {
+              "id": "5a67af7c-21e8-4ea4-bc9d-8840a57669cd"
+            },
+            {
+              "id": "962092a7-44c2-44a1-bec6-6b4e3bd620e5"
+            },
+            {
+              "id": "2753e650-1e93-4f45-92cd-6938f5af4ff7"
+            },
+            {
+              "id": "e843bd4c-50d3-41ac-b66d-92fb0b70e0d1"
+            },
+            {
+              "id": "597c6072-508b-4859-bcd3-5c60cc04aa89"
+            },
+            {
+              "id": "c97f36ea-755a-4af4-8841-c3d44f41adef"
+            },
+            {
+              "id": "3f5ec8f3-1cb4-4b93-aac8-883ba44ec25d"
+            },
+            {
+              "id": "b69a24e6-1eab-4a7d-a91f-e90255f91b1f"
+            },
+            {
+              "id": "39b170fe-cf6f-493f-b941-c6a3cba6f38a"
+            },
+            {
+              "id": "500561a3-7b48-485d-9bb1-61098be4a712"
+            },
+            {
+              "id": "66cd29a8-94d3-407d-bd92-5466e7aa0022"
+            }
+          ],
+          "hand": [
+            {
+              "id": "b8059d3d-7799-4250-a06c-ec959ec97221",
+              "catalogId": "1-2-001",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 3000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
+            },
+            {
+              "id": "7dcbf7c4-e66c-4572-b5bf-316c2b1192bf",
+              "catalogId": "PR-067",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "remain": 1,
+              "revealed": false
+            },
+            {
+              "id": "209c6450-ad33-423e-aea5-b8ddeb055abf",
+              "catalogId": "PR-016",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 3000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
+            },
+            {
+              "id": "808991a3-1466-4f1c-adae-f70ddf297cdd",
+              "catalogId": "1-2-057",
+              "lv": 1,
+              "delta": [],
+              "generation": 1
+            }
+          ],
+          "trash": [],
+          "delete": [],
+          "field": [],
+          "trigger": [],
+          "called": [],
+          "joker": {
+            "card": [
+              {
+                "id": "e00c80fd-a88f-47a4-a4c4-45ccea85b7d6",
+                "catalogId": "ルインリード",
+                "chara": "THE HERMIT",
+                "cost": 1,
+                "isAvailable": false,
+                "lv": 1
+              },
+              {
+                "id": "d598dc70-4050-4d2b-a4d5-81b4491d2022",
+                "catalogId": "ソウルエクスキューション",
+                "chara": "THE HIGH PRIESTESS",
+                "cost": 1,
+                "isAvailable": false,
+                "lv": 1
+              }
+            ],
+            "gauge": 0
+          },
+          "cp": {
+            "current": 0,
+            "max": 0
+          },
+          "life": {
+            "current": 8,
+            "max": 8
+          }
+        }
+      }
+    }
+  }
+}
