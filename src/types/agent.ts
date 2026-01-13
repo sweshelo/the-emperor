@@ -128,3 +128,30 @@ export interface CardWithCatalogInfo {
   /** Battle power (for units) */
   bp?: number[];
 }
+
+/**
+ * Proposed action from AI awaiting user confirmation
+ */
+export interface ProposedAction {
+  /** Unique ID for this proposal */
+  id: string;
+  /** The action to execute */
+  action: ParsedAction;
+  /** Human-readable description */
+  description: string;
+  /** AI's reasoning for this action */
+  reasoning: string;
+  /** Timestamp when proposed */
+  timestamp: number;
+  /** Current status of the proposal */
+  status: "pending" | "approved" | "rejected";
+}
+
+/**
+ * Result of AI command handling in BuddyAgent
+ * - boolean: true = handled, continue loop; false = not handled
+ * - object with shouldExecute: action should be returned from decideAction
+ */
+export type AICommandResult =
+  | boolean
+  | { shouldExecute: true; action: ParsedAction };

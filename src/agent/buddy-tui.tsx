@@ -5,6 +5,7 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { render, Box, Text, Static, useInput, useApp, useStdin } from "ink";
 import TextInput from "ink-text-input";
+import Spinner from "ink-spinner";
 
 /**
  * Message type for log display
@@ -23,6 +24,7 @@ interface BuddyTuiProps {
   onCommand: (command: string) => void;
   prompt: string;
   isInputEnabled: boolean;
+  disabledReason: string;
   gameStatus: string;
 }
 
@@ -63,6 +65,7 @@ function BuddyTuiApp({
   onCommand,
   prompt,
   isInputEnabled,
+  disabledReason,
   gameStatus,
 }: BuddyTuiProps): React.ReactElement {
   const [input, setInput] = useState("");
@@ -87,13 +90,16 @@ function BuddyTuiApp({
 
   const handleSubmit = useCallback(
     (value: string) => {
-      // Always accept input (even during opponent's turn)
+      // Block input when disabled
+      if (!isInputEnabled) {
+        return;
+      }
       if (value.trim()) {
         onCommand(value.trim());
         setInput("");
       }
     },
-    [onCommand]
+    [onCommand, isInputEnabled]
   );
 
   // Add keys to messages for Static rendering
@@ -119,9 +125,17 @@ function BuddyTuiApp({
         <Text color="gray">[</Text>
         <Text color="yellow">{gameStatus}</Text>
         <Text color="gray">] </Text>
-        <Text color={isInputEnabled ? "green" : "yellow"}>{prompt} </Text>
-        <TextInput value={input} onChange={setInput} onSubmit={handleSubmit} />
-        {!isInputEnabled && <Text color="gray"> (waiting)</Text>}
+        {isInputEnabled ? (
+          <>
+            <Text color="green">{prompt} </Text>
+            <TextInput value={input} onChange={setInput} onSubmit={handleSubmit} />
+          </>
+        ) : (
+          <>
+            <Text color="yellow"><Spinner type="dots" /> </Text>
+            <Text color="gray">{disabledReason || "処理中..."}</Text>
+          </>
+        )}
       </Box>
     </Box>
   );
@@ -137,6 +151,7 @@ export class TuiController {
   private commandQueue: string[] = [];
   private prompt: string = ">";
   private isInputEnabled: boolean = true;
+  private disabledReason: string = "";
   private gameStatus: string = "Initializing...";
   private rerender: (() => void) | null = null;
   private inkInstance: ReturnType<typeof render> | null = null;
@@ -161,6 +176,7 @@ export class TuiController {
           onCommand={this.handleCommand.bind(this)}
           prompt={this.prompt}
           isInputEnabled={this.isInputEnabled}
+          disabledReason={this.disabledReason}
           gameStatus={this.gameStatus}
         />
       );
@@ -238,9 +254,12 @@ export class TuiController {
 
   /**
    * Enable or disable input
+   * @param enabled - Whether input is enabled
+   * @param reason - Reason for disabling (shown to user when disabled)
    */
-  setInputEnabled(enabled: boolean): void {
+  setInputEnabled(enabled: boolean, reason?: string): void {
     this.isInputEnabled = enabled;
+    this.disabledReason = reason ?? "";
     this.rerender?.();
   }
 

@@ -3,7 +3,7 @@
  * With unified AI support for analysis and advice
  */
 
-import type { Agent, DecisionContext, ParsedAction } from "../types/agent.ts";
+import type { Agent, DecisionContext, ParsedAction, AICommandResult } from "../types/agent.ts";
 import type { IAtom } from "../../suit/types/game/card/index.ts";
 import { type CatalogCard, isJokerCard } from "../schemas/catalog.ts";
 import type { ICard, ChoicesMessage, GameState } from "../types/game.ts";
@@ -144,6 +144,9 @@ export class BuddyAgent implements Agent {
             : "--- AI評価 ---";
           this.tui.addMessage("ai", prefix);
           this.tui.addLines("ai", message);
+        },
+        onProcessingChange: (isProcessing, reason) => {
+          this.tui.setInputEnabled(!isProcessing, reason);
         },
       };
 
@@ -364,6 +367,9 @@ export class BuddyAgent implements Agent {
     // AI commands
     if (this.ai) {
       this.tui.addMessage("ai", "--- AI COMMANDS ---");
+      this.tui.addMessage("ai", "/do <指示>            - AIにアクションを指示");
+      this.tui.addMessage("ai", "/confirm (/yes)       - 提案されたアクションを実行");
+      this.tui.addMessage("ai", "/reject [理由] (/no)  - 提案を却下");
       this.tui.addMessage("ai", "/think                - 状況を詳しく分析");
       this.tui.addMessage("ai", "/advice <action>      - 特定アクションのアドバイス");
       this.tui.addMessage("ai", "/comment <text>       - AIへコメント");
@@ -609,9 +615,9 @@ export class BuddyAgent implements Agent {
 
   /**
    * Handle AI commands
-   * Returns true if command was handled
+   * Returns AICommandResult: true = handled, false = not handled, or action to execute
    */
-  private async handleAICommand(input: string, _context: DecisionContext): Promise<boolean> {
+  private async handleAICommand(input: string, _context: DecisionContext): Promise<AICommandResult> {
     if (!this.ai) return false;
 
     const parts = input.split(/\s+/);
@@ -619,7 +625,6 @@ export class BuddyAgent implements Agent {
 
     switch (command) {
       case "/think": {
-        this.tui.addMessage("ai", "状況を分析中...");
         try {
           await this.ai.requestAnalysis();
         } catch (error) {
@@ -635,7 +640,6 @@ export class BuddyAgent implements Agent {
           this.tui.addMessage("system", "Example: /advice summon, /advice attack, /advice end");
           return true;
         }
-        this.tui.addMessage("ai", `「${actionType}」についてアドバイス中...`);
         try {
           await this.ai.requestAdvice(actionType);
         } catch (error) {
@@ -710,6 +714,55 @@ export class BuddyAgent implements Agent {
         return true;
       }
 
+      case "/do": {
+        const instruction = parts.slice(1).join(" ");
+        if (!instruction) {
+          this.tui.addMessage("system", "Usage: /do <指示>");
+          this.tui.addMessage("system", "例: /do 攻撃して, /do このカードを召喚して");
+          return true;
+        }
+        this.tui.addMessage("ai", `指示を解釈中: "${instruction}"`);
+        try {
+          await this.ai.requestActionFromInstruction(instruction);
+          // Check if AI proposed an action
+          if (this.ai.hasPendingAction()) {
+            const pending = this.ai.getPendingAction();
+            if (pending) {
+              this.tui.addMessage("ai", "--- アクション提案 ---");
+              this.tui.addMessage("ai", `内容: ${pending.description}`);
+              this.tui.addMessage("ai", `理由: ${pending.reasoning}`);
+              this.tui.addMessage("system", "/confirm で実行、/reject [理由] で却下");
+            }
+          }
+        } catch (error) {
+          this.tui.addMessage("error", `エラー: ${error}`);
+        }
+        return true;
+      }
+
+      case "/confirm":
+      case "/yes": {
+        const proposed = this.ai.confirmPendingAction();
+        if (proposed) {
+          this.tui.addMessage("system", `実行: ${proposed.description}`);
+          return { shouldExecute: true, action: proposed.action };
+        }
+        this.tui.addMessage("error", "確認待ちのアクションがありません");
+        return true;
+      }
+
+      case "/reject":
+      case "/no": {
+        if (!this.ai.hasPendingAction()) {
+          this.tui.addMessage("error", "却下するアクションがありません");
+          return true;
+        }
+        const reason = parts.slice(1).join(" ") || undefined;
+        this.ai.rejectPendingAction(reason);
+        this.tui.addMessage("system", "アクションを却下しました");
+        return true;
+      }
+
       default:
         return false;
     }
@@ -762,10 +815,16 @@ export class BuddyAgent implements Agent {
 
       // Handle AI commands (starting with /)
       if (input.startsWith("/")) {
-        const handled = await this.handleAICommand(input, context);
-        if (handled) {
+        const result = await this.handleAICommand(input, context);
+        // Check if result is an action to execute
+        if (typeof result === "object" && "shouldExecute" in result) {
+          return result.action;
+        }
+        // If handled (true), continue the loop
+        if (result === true) {
           continue;
         }
+        // Not handled (false)
         this.tui.addMessage("error", `Unknown command: ${input.split(/\s+/)[0]}`);
         continue;
       }
@@ -785,9 +844,11 @@ export class BuddyAgent implements Agent {
       // Input is not a game command - treat as pilot comment if AI is enabled
       if (this.ai) {
         this.tui.addMessage("user", `[パイロット] ${input}`);
-        this.ai.addPilotComment(input).catch((err) => {
+        try {
+          await this.ai.addPilotComment(input);
+        } catch (err) {
           this.tui.addMessage("error", `コメント処理エラー: ${err}`);
-        });
+        }
         continue;
       } else {
         this.tui.addMessage("error", `Unknown command: ${input.split(/\s+/)[0]}`);

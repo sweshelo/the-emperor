@@ -4,11 +4,19 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
-import type { GameState } from "../types/game.ts";
-import type { DecisionContext } from "../types/agent.ts";
+import type { GameState, ICard } from "../types/game.ts";
+import type { DecisionContext, ParsedAction, ProposedAction } from "../types/agent.ts";
 import type { CatalogCard } from "../schemas/catalog.ts";
+import type { IAtom } from "../../suit/types/game/card/index.ts";
 import { isJokerCard } from "../schemas/catalog.ts";
 import { formatGameStatePrompt, formatChoicePrompt, formatAvailableActionsPrompt } from "./prompts.ts";
+
+/**
+ * Type guard to check if an IAtom has catalogId (is actually an ICard)
+ */
+function hasCardInfo(atom: IAtom): atom is ICard {
+  return "catalogId" in atom && "lv" in atom;
+}
 
 /**
  * Message in the unified AI thread
@@ -27,6 +35,9 @@ export interface UnifiedAIConfig {
   model?: string;
   debounceMs?: number;
   onMessage?: (message: string, type: "analysis" | "advice" | "evaluation") => void;
+  onActionProposed?: (action: ProposedAction) => void;
+  /** Called when AI processing state changes (true = processing started, false = processing ended) */
+  onProcessingChange?: (isProcessing: boolean, reason?: string) => void;
 }
 
 /**
@@ -44,6 +55,34 @@ function isLookupCardInput(input: unknown): input is LookupCardInput {
     return false;
   }
   return "catalogId" in input && typeof input.catalogId === "string";
+}
+
+/**
+ * Input type for propose_action tool
+ */
+interface ProposeActionInput {
+  actionType: string;
+  parameters: Record<string, unknown>;
+  reasoning: string;
+}
+
+/**
+ * Type guard for propose_action input
+ */
+function isProposeActionInput(input: unknown): input is ProposeActionInput {
+  if (typeof input !== "object" || input === null) {
+    return false;
+  }
+  if (!("actionType" in input) || typeof input.actionType !== "string") {
+    return false;
+  }
+  if (!("parameters" in input) || typeof input.parameters !== "object" || input.parameters === null) {
+    return false;
+  }
+  if (!("reasoning" in input) || typeof input.reasoning !== "string") {
+    return false;
+  }
+  return true;
 }
 
 /**
@@ -79,6 +118,9 @@ export class UnifiedAI {
   private gameRules = "";
   private rulesLoaded = false;
   private learningRecords: LearningRecord[] = [];
+  private pendingAction: ProposedAction | null = null;
+  private onActionProposed: ((action: ProposedAction) => void) | null = null;
+  private onProcessingChange: ((isProcessing: boolean, reason?: string) => void) | null = null;
 
   /**
    * Tool definitions for the AI
@@ -116,6 +158,28 @@ export class UnifiedAI {
         required: [],
       },
     },
+    {
+      name: "propose_action",
+      description: "パイロットの指示に基づいてアクションを提案します。パイロットの承認後に実行されます。",
+      input_schema: {
+        type: "object",
+        properties: {
+          actionType: {
+            type: "string",
+            description: "アクションの種類: summon (ユニット召喚), attack (攻撃), set_trigger (トリガーセット), boot (ブート能力), withdraw (撤退), joker (JOKER使用), end_turn (ターン終了), choose (選択)",
+          },
+          parameters: {
+            type: "object",
+            description: "アクションのパラメータ。actionTypeに応じて必要なパラメータが異なります。summon: {cardId}, attack: {unitId}, set_trigger: {cardId}, boot: {unitId}, withdraw: {unitId}, joker: {jokerId}, choose: {choiceIds: string[]}",
+          },
+          reasoning: {
+            type: "string",
+            description: "このアクションを提案する理由の説明",
+          },
+        },
+        required: ["actionType", "parameters", "reasoning"],
+      },
+    },
   ];
 
   constructor(
@@ -129,6 +193,8 @@ export class UnifiedAI {
     this.debounceMs = config.debounceMs ?? 1500;
     this.catalogLookup = catalogLookup;
     this.onMessage = config.onMessage ?? null;
+    this.onActionProposed = config.onActionProposed ?? null;
+    this.onProcessingChange = config.onProcessingChange ?? null;
 
     // Load game rules
     this.loadGameRules().catch((err) => {
@@ -161,6 +227,7 @@ export class UnifiedAI {
 - パイロットからの質問やコメントに応答
 - 戦略的なアドバイスを提供
 - パイロットの判断を評価し、学習を支援
+- パイロットの指示に基づいてアクションを提案
 
 ## 応答スタイル
 - 簡潔に（1-3文程度）
@@ -170,7 +237,20 @@ export class UnifiedAI {
 ## ツールの使用
 - カード情報が必要な場合は lookup_card を使用
 - ゲーム状態の詳細が必要な場合は get_game_state を使用
-- 可能なアクションを確認する場合は get_available_actions を使用`;
+- 可能なアクションを確認する場合は get_available_actions を使用
+- パイロットからアクション実行の指示があった場合は propose_action を使用
+
+## アクション提案について（重要）
+パイロットから「攻撃して」「このカードを召喚して」などのアクション実行の指示があった場合:
+1. まず get_available_actions で実行可能なアクションを確認
+2. 指示された内容が実行可能か検証
+3. propose_action ツールでアクションを提案
+
+**重要な制約**:
+- 自発的にアクションを提案しないでください
+- パイロットから明示的な指示（「〜して」「〜を実行」など）があった場合のみ propose_action を使用
+- 通常の会話や分析では propose_action を使用しない
+- 提案したアクションはパイロットの承認後に実行されます`;
 
     if (this.gameRules) {
       return `${basePrompt}\n\n## ゲームルール\n${this.gameRules}`;
@@ -212,6 +292,35 @@ export class UnifiedAI {
         return actions + (choice ? "\n\n" + choice : "");
       }
 
+      case "propose_action": {
+        if (!isProposeActionInput(toolInput)) {
+          return "エラー: actionType, parameters, reasoning が必要です";
+        }
+        if (!this.currentContext) {
+          return "エラー: ゲーム状態がまだ取得されていません";
+        }
+
+        const parsedAction = this.buildParsedAction(toolInput.actionType, toolInput.parameters);
+        if (!parsedAction) {
+          return `エラー: アクションを構築できませんでした (actionType: ${toolInput.actionType})`;
+        }
+
+        const description = this.describeActionForProposal(toolInput.actionType, toolInput.parameters);
+        const proposedAction: ProposedAction = {
+          id: `proposal_${Date.now()}`,
+          action: parsedAction,
+          description,
+          reasoning: toolInput.reasoning,
+          timestamp: Date.now(),
+          status: "pending",
+        };
+
+        this.pendingAction = proposedAction;
+        this.onActionProposed?.(proposedAction);
+
+        return `アクションを提案しました: ${description}\n理由: ${toolInput.reasoning}\n\nパイロットの承認を待っています...`;
+      }
+
       default:
         return `Unknown tool: ${toolName}`;
     }
@@ -247,6 +356,188 @@ export class UnifiedAI {
       1: "赤", 2: "黄", 3: "青", 4: "緑", 5: "紫", 6: "無",
     };
     return names[color] ?? "不明";
+  }
+
+  /**
+   * Build ParsedAction from action type and parameters
+   */
+  private buildParsedAction(actionType: string, parameters: Record<string, unknown>): ParsedAction | null {
+    const playerId = this.currentContext?.myPlayerId;
+    if (!playerId) return null;
+
+    switch (actionType) {
+      case "summon": {
+        const cardId = typeof parameters.cardId === "string" ? parameters.cardId : null;
+        if (!cardId) return null;
+        return {
+          type: "UnitDrive",
+          payload: { type: "UnitDrive", player: playerId, target: { id: cardId } },
+        };
+      }
+
+      case "attack": {
+        const unitId = typeof parameters.unitId === "string" ? parameters.unitId : null;
+        if (!unitId) return null;
+        return {
+          type: "Attack",
+          payload: { type: "Attack", player: playerId, target: { id: unitId } },
+        };
+      }
+
+      case "set_trigger": {
+        const cardId = typeof parameters.cardId === "string" ? parameters.cardId : null;
+        if (!cardId) return null;
+        // Find card in hand to get catalogId
+        const myPlayer = this.currentContext?.gameState.players[playerId];
+        const card = myPlayer?.hand.find((c) => c.id === cardId);
+        if (!card || !hasCardInfo(card)) return null;
+        return {
+          type: "TriggerSet",
+          payload: {
+            type: "TriggerSet",
+            player: playerId,
+            target: { id: cardId, catalogId: card.catalogId },
+          },
+        };
+      }
+
+      case "boot": {
+        const unitId = typeof parameters.unitId === "string" ? parameters.unitId : null;
+        if (!unitId) return null;
+        return {
+          type: "Boot",
+          payload: { type: "Boot", player: playerId, target: { id: unitId } },
+        };
+      }
+
+      case "withdraw": {
+        const unitId = typeof parameters.unitId === "string" ? parameters.unitId : null;
+        if (!unitId) return null;
+        return {
+          type: "Withdrawal",
+          payload: { type: "Withdrawal", player: playerId, target: { id: unitId } },
+        };
+      }
+
+      case "joker": {
+        const jokerId = typeof parameters.jokerId === "string" ? parameters.jokerId : null;
+        if (!jokerId) return null;
+        return {
+          type: "JokerDrive",
+          payload: { type: "JokerDrive", player: playerId, target: { id: jokerId } },
+        };
+      }
+
+      case "end_turn": {
+        return {
+          type: "TurnEnd",
+          payload: { type: "TurnEnd" },
+        };
+      }
+
+      case "choose": {
+        const choiceIds = Array.isArray(parameters.choiceIds)
+          ? parameters.choiceIds.filter((id): id is string => typeof id === "string")
+          : [];
+        const promptId = this.currentContext?.choice?.promptId;
+        if (!promptId) return null;
+        return {
+          type: "Choose",
+          payload: {
+            type: "Choose",
+            promptId,
+            choice: choiceIds.length > 0 ? choiceIds : undefined,
+          },
+        };
+      }
+
+      default:
+        return null;
+    }
+  }
+
+  /**
+   * Describe an action for proposal display
+   */
+  private describeActionForProposal(actionType: string, parameters: Record<string, unknown>): string {
+    const playerId = this.currentContext?.myPlayerId;
+    const myPlayer = playerId ? this.currentContext?.gameState.players[playerId] : null;
+
+    switch (actionType) {
+      case "summon": {
+        const cardId = typeof parameters.cardId === "string" ? parameters.cardId : null;
+        if (cardId && myPlayer) {
+          const card = myPlayer.hand.find((c) => c.id === cardId);
+          if (card && hasCardInfo(card)) {
+            const info = this.catalogLookup(card.catalogId);
+            return `召喚: ${info?.name ?? card.catalogId}`;
+          }
+        }
+        return "ユニット召喚";
+      }
+
+      case "attack": {
+        const unitId = typeof parameters.unitId === "string" ? parameters.unitId : null;
+        if (unitId && myPlayer) {
+          const unit = myPlayer.field.find((u) => u.id === unitId);
+          if (unit) {
+            const info = this.catalogLookup(unit.catalogId);
+            return `攻撃: ${info?.name ?? unit.catalogId} (BP:${unit.bp})`;
+          }
+        }
+        return "攻撃";
+      }
+
+      case "set_trigger": {
+        const cardId = typeof parameters.cardId === "string" ? parameters.cardId : null;
+        if (cardId && myPlayer) {
+          const card = myPlayer.hand.find((c) => c.id === cardId);
+          if (card && hasCardInfo(card)) {
+            const info = this.catalogLookup(card.catalogId);
+            return `トリガーセット: ${info?.name ?? card.catalogId}`;
+          }
+        }
+        return "トリガーセット";
+      }
+
+      case "boot": {
+        const unitId = typeof parameters.unitId === "string" ? parameters.unitId : null;
+        if (unitId && myPlayer) {
+          const unit = myPlayer.field.find((u) => u.id === unitId);
+          if (unit) {
+            const info = this.catalogLookup(unit.catalogId);
+            return `ブート能力使用: ${info?.name ?? unit.catalogId}`;
+          }
+        }
+        return "ブート能力使用";
+      }
+
+      case "withdraw": {
+        const unitId = typeof parameters.unitId === "string" ? parameters.unitId : null;
+        if (unitId && myPlayer) {
+          const unit = myPlayer.field.find((u) => u.id === unitId);
+          if (unit) {
+            const info = this.catalogLookup(unit.catalogId);
+            return `撤退: ${info?.name ?? unit.catalogId}`;
+          }
+        }
+        return "撤退";
+      }
+
+      case "joker":
+        return "JOKER使用";
+
+      case "end_turn":
+        return "ターン終了";
+
+      case "choose": {
+        const choiceIds = Array.isArray(parameters.choiceIds) ? parameters.choiceIds : [];
+        return `選択: ${choiceIds.length}個選択`;
+      }
+
+      default:
+        return actionType;
+    }
   }
 
   /**
@@ -336,6 +627,14 @@ export class UnifiedAI {
       .join("\n");
   }
 
+  /**
+   * Set processing state and notify via callback
+   */
+  private setProcessing(processing: boolean, reason?: string): void {
+    this.isProcessing = processing;
+    this.onProcessingChange?.(processing, reason);
+  }
+
   // ============ Public API ============
 
   /**
@@ -390,14 +689,14 @@ export class UnifiedAI {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
 
-    this.isProcessing = true;
+    this.setProcessing(true, "応答中...");
     try {
       const response = await this.sendMessage(message);
       this.onMessage?.(response, "analysis");
     } catch (error) {
       console.error("[UnifiedAI] Comment response error:", error);
     } finally {
-      this.isProcessing = false;
+      this.setProcessing(false);
     }
   }
 
@@ -427,7 +726,7 @@ export class UnifiedAI {
 3. 推奨される行動とその理由
 4. 注意すべきリスク`;
 
-    this.isProcessing = true;
+    this.setProcessing(true, "状況を分析中...");
     try {
       const response = await this.sendMessage(message);
       this.onMessage?.(response, "advice");
@@ -436,7 +735,7 @@ export class UnifiedAI {
       console.error("[UnifiedAI] Analysis error:", error);
       return "分析中にエラーが発生しました";
     } finally {
-      this.isProcessing = false;
+      this.setProcessing(false);
     }
   }
 
@@ -451,7 +750,7 @@ export class UnifiedAI {
     const message = `[パイロットの質問] 「${actionType}」についてアドバイスをください。
 メリット・デメリットを教えてください。`;
 
-    this.isProcessing = true;
+    this.setProcessing(true, "アドバイス中...");
     try {
       const response = await this.sendMessage(message);
       this.onMessage?.(response, "advice");
@@ -460,7 +759,7 @@ export class UnifiedAI {
       console.error("[UnifiedAI] Advice error:", error);
       return "アドバイス中にエラーが発生しました";
     } finally {
-      this.isProcessing = false;
+      this.setProcessing(false);
     }
   }
 
@@ -475,7 +774,14 @@ export class UnifiedAI {
       return { evaluation: "評価できませんでした", recorded: false };
     }
 
-    const message = `[行動評価依頼]
+    // Wait for any ongoing processing to complete
+    while (this.isProcessing) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    this.setProcessing(true, "行動を評価中...");
+    try {
+      const message = `[行動評価依頼]
 プレイヤーが選択した行動:
 - 種類: ${actionType}
 - 詳細: ${actionDescription}
@@ -487,7 +793,6 @@ export class UnifiedAI {
 score: -1=悪手, 0=普通, 1=好手
 isNotable: 学習価値があるか`;
 
-    try {
       const response = await this.sendMessage(message);
 
       // Parse JSON from response
@@ -532,6 +837,8 @@ isNotable: 学習価値があるか`;
     } catch (error) {
       console.error("[UnifiedAI] Evaluation error:", error);
       return { evaluation: "評価できませんでした", recorded: false };
+    } finally {
+      this.setProcessing(false);
     }
   }
 
@@ -585,6 +892,94 @@ isNotable: 学習価値があるか`;
     return this.rulesLoaded;
   }
 
+  // ============ Action Proposal API ============
+
+  /**
+   * Check if there's a pending action proposal
+   */
+  hasPendingAction(): boolean {
+    return this.pendingAction !== null && this.pendingAction.status === "pending";
+  }
+
+  /**
+   * Get the current pending action proposal
+   */
+  getPendingAction(): ProposedAction | null {
+    return this.pendingAction;
+  }
+
+  /**
+   * Confirm and return the pending action for execution
+   */
+  confirmPendingAction(): ProposedAction | null {
+    if (!this.pendingAction || this.pendingAction.status !== "pending") {
+      return null;
+    }
+    this.pendingAction.status = "approved";
+    const action = this.pendingAction;
+    this.pendingAction = null;
+    return action;
+  }
+
+  /**
+   * Reject the pending action
+   */
+  rejectPendingAction(reason?: string): void {
+    if (!this.pendingAction) return;
+    this.pendingAction.status = "rejected";
+    if (reason) {
+      this.pendingEvents.push(`[パイロット] アクション提案を却下: ${reason}`);
+    }
+    this.pendingAction = null;
+  }
+
+  /**
+   * Request AI to interpret pilot instruction and propose action
+   */
+  async requestActionFromInstruction(instruction: string): Promise<void> {
+    if (!this.currentContext) {
+      throw new Error("ゲーム状態がまだ取得されていません");
+    }
+
+    // Cancel pending auto-analysis
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer);
+      this.debounceTimer = null;
+    }
+
+    const pendingContext = this.pendingEvents.length > 0
+      ? this.pendingEvents.join("\n\n") + "\n\n"
+      : "";
+    this.pendingEvents = [];
+
+    const message = `${pendingContext}[パイロットの指示] ${instruction}
+
+現在のゲーム状態と実行可能なアクションを確認し、パイロットの指示に沿ったアクションを propose_action ツールで提案してください。
+
+提案前に以下を確認してください:
+1. get_available_actions で実行可能なアクションを確認
+2. 指示された内容が実行可能か
+3. 戦略的に妥当か
+
+指示に沿ったアクションが実行できない場合は、その理由を説明してください。`;
+
+    // Wait for any ongoing processing to complete
+    while (this.isProcessing) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    this.setProcessing(true, "指示を解釈中...");
+    try {
+      const response = await this.sendMessage(message);
+      this.onMessage?.(response, "analysis");
+    } catch (error) {
+      console.error("[UnifiedAI] Action request error:", error);
+      throw error;
+    } finally {
+      this.setProcessing(false);
+    }
+  }
+
   // ============ Private helpers ============
 
   /**
@@ -613,14 +1008,14 @@ isNotable: 学習価値があるか`;
     const content = this.pendingEvents.join("\n\n");
     this.pendingEvents = [];
 
-    this.isProcessing = true;
+    this.setProcessing(true, "リアルタイム分析中...");
     try {
       const response = await this.sendMessage(content);
       this.onMessage?.(response, "analysis");
     } catch (error) {
       console.error("[UnifiedAI] Auto-analysis error:", error);
     } finally {
-      this.isProcessing = false;
+      this.setProcessing(false);
     }
   }
 
