@@ -184,3 +184,78 @@ export function parseChoices(data: unknown): ChoicesMessage["choices"] | null {
   }
   return null;
 }
+
+// ============================================
+// Server message payload type guards
+// ============================================
+
+interface SyncPayload {
+  type: "Sync";
+  body: GameState;
+}
+
+interface TurnChangePayload {
+  type: "TurnChange";
+  player: string;
+  isFirst: boolean;
+}
+
+interface MulliganStartPayload {
+  type: "MulliganStart";
+}
+
+interface OperationPayload {
+  type: "Operation";
+  action: string;
+}
+
+/**
+ * Type guard for server message payloads
+ */
+export function isServerMessagePayload(payload: unknown): payload is { type: string } {
+  return typeof payload === "object" && payload !== null && "type" in payload;
+}
+
+/**
+ * Type guard for Sync payload
+ */
+export function isSyncPayload(payload: unknown): payload is SyncPayload {
+  if (!isServerMessagePayload(payload)) return false;
+  if (payload.type !== "Sync") return false;
+  return "body" in payload && typeof payload.body === "object";
+}
+
+/**
+ * Type guard for Choices payload (full ChoicesMessage)
+ */
+export function isChoicesPayload(payload: unknown): payload is ChoicesMessage {
+  if (!isServerMessagePayload(payload)) return false;
+  if (payload.type !== "Choices") return false;
+  return "promptId" in payload && "player" in payload && "choices" in payload;
+}
+
+/**
+ * Type guard for TurnChange payload
+ */
+export function isTurnChangePayload(payload: unknown): payload is TurnChangePayload {
+  if (!isServerMessagePayload(payload)) return false;
+  if (payload.type !== "TurnChange") return false;
+  return "player" in payload && "isFirst" in payload;
+}
+
+/**
+ * Type guard for MulliganStart payload
+ */
+export function isMulliganStartPayload(payload: unknown): payload is MulliganStartPayload {
+  if (!isServerMessagePayload(payload)) return false;
+  return payload.type === "MulliganStart";
+}
+
+/**
+ * Type guard for Operation payload
+ */
+export function isOperationPayload(payload: unknown): payload is OperationPayload {
+  if (!isServerMessagePayload(payload)) return false;
+  if (payload.type !== "Operation") return false;
+  return "action" in payload;
+}

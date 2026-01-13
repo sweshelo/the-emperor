@@ -3,6 +3,7 @@
  */
 
 import type { GameState, ChoicesMessage } from "../types/game.ts";
+import type { DecisionContext } from "../types/agent.ts";
 
 /**
  * Game state manager
@@ -125,6 +126,22 @@ export class GameStateManager {
       players: this.currentState.players,
       myPlayerId: this.myPlayerId,
       currentChoice: this.currentChoice,
+    };
+  }
+
+  /**
+   * Get decision context for the agent
+   * Returns null if game state or player ID is not available
+   */
+  getDecisionContext(): DecisionContext | null {
+    if (!this.currentState || !this.myPlayerId) {
+      return null;
+    }
+
+    return {
+      gameState: this.currentState,
+      choice: this.currentChoice,
+      myPlayerId: this.myPlayerId,
     };
   }
 
