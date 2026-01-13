@@ -283,9 +283,9 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
         return;
       }
 
-      // Setup sandbox with green units in deck for effect testing
+      // Setup sandbox - sync.json should already have green units in deck
       const baseState = loadSyncGameState();
-      const debugState = enableDebugMode(baseState, true); // Add green units to deck
+      const debugState = enableDebugMode(baseState, false); // Don't add extra green units
 
       // Get player info
       const playerIds = getPlayerIds(debugState);

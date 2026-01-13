@@ -40,7 +40,7 @@
           "suicideJoker": false
         },
         "debug": {
-          "enable": false,
+          "enable": true,
           "reveal": {
             "opponent": {
               "deck": true,
@@ -59,8 +59,8 @@
         "turn": 1
       },
       "players": {
-        "q3nQoCOikYRPHCXWp0y_m": {
-          "id": "q3nQoCOikYRPHCXWp0y_m",
+        "v59LS_VjRbQEkb9TPhhuu": {
+          "id": "v59LS_VjRbQEkb9TPhhuu",
           "name": "エージェント候補生",
           "library": [
             "1-2-001",
@@ -106,126 +106,418 @@
           ],
           "deck": [
             {
-              "id": "4d38df9e-c66e-4ade-b683-3cb3cb3fac74"
+              "id": "1c497e23-3862-43e0-92d8-1985ec1ad25c",
+              "catalogId": "1-2-124",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 6000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
             },
             {
-              "id": "9e773c56-e565-4bfe-9e18-5a6ef5405cd2"
+              "id": "fe24f483-9eae-4177-acea-37413bafe773",
+              "catalogId": "1-2-101",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 4000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
             },
             {
-              "id": "e4db9212-84ee-401f-ba7b-18274fb4b2cf"
+              "id": "20b9ba15-88a6-4f0c-84fb-87712e13bde6",
+              "catalogId": "1-2-104",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 5000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
             },
             {
-              "id": "4bf5a8c1-e7a8-4dc6-b6fe-b36b209abe68"
+              "id": "a43089b2-479d-42a1-abcf-b6e2b9808157",
+              "catalogId": "1-2-007",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 1000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
             },
             {
-              "id": "caccdeed-8900-4329-9921-c3bade1cf3ba"
+              "id": "a01b143f-7411-4e5d-a18a-b6d43cf9b419",
+              "catalogId": "1-2-043",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 3000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
             },
             {
-              "id": "7b923fdd-29a3-4d78-82a7-3dce996d9270"
+              "id": "003aa07d-cf63-4e64-8fee-593b9369f7e1",
+              "catalogId": "1-2-101",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 4000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
             },
             {
-              "id": "14eee8ee-03e5-4cef-8670-aeafee68b48a"
+              "id": "42c2deb6-e85f-4b6c-a01c-15bb78a38a64",
+              "catalogId": "PR-016",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 3000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
             },
             {
-              "id": "c14df3d2-cb1b-4795-96c4-9d5c3b7ce5c4"
+              "id": "b0df8672-b5f0-488a-9d22-f32174936131",
+              "catalogId": "PR-016",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 3000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
             },
             {
-              "id": "14485350-c3a8-42ab-8774-1af78650b7c6"
+              "id": "ff892fcb-366c-4c61-95bb-db234cb3077a",
+              "catalogId": "1-2-003",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 5000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
             },
             {
-              "id": "dc72bef8-9233-4759-999d-148298581fe2"
+              "id": "8961f9ea-3673-4b04-91d1-392fdb2d1994",
+              "catalogId": "PR-067",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "remain": 1,
+              "revealed": false
             },
             {
-              "id": "c02d7036-4c2b-4fac-894e-5643b72dd84a"
+              "id": "b9f8267b-22fe-46e4-bd2c-11d085a6da31",
+              "catalogId": "1-2-106",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 6000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
             },
             {
-              "id": "039ddef0-a27e-4b70-bec2-48bdad2a3fc1"
+              "id": "5f719c06-bad7-4638-898a-d8a7797f89c5",
+              "catalogId": "1-2-049",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 4000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
             },
             {
-              "id": "21c042f9-c5ac-4749-95fd-14628942d13a"
+              "id": "0d0d3d91-34c2-4822-b987-a4aa7ee910e8",
+              "catalogId": "1-2-043",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 3000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
             },
             {
-              "id": "b71cd7af-3bc9-4cba-baba-bc92b3052999"
+              "id": "e91475da-19db-4431-8169-65263facbed7",
+              "catalogId": "1-2-004",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 5000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
             },
             {
-              "id": "afe86da5-0ec1-4b1c-812a-f74680669e21"
+              "id": "d55172b5-f35f-4e45-9abe-73e2fc915f1d",
+              "catalogId": "1-2-099",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "remain": 1,
+              "revealed": false
             },
             {
-              "id": "abd684e2-ef6e-4f8e-bd40-30a1c7e67245"
+              "id": "039dbb69-92d4-47d1-8213-181d8065d5ea",
+              "catalogId": "1-2-141",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "remain": 1,
+              "revealed": false
             },
             {
-              "id": "62fbdbe0-ff1b-4900-a86b-debc8ac551b0"
+              "id": "2c27382d-74c0-4989-bce9-55d897850308",
+              "catalogId": "1-2-003",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 5000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
             },
             {
-              "id": "00be65b4-b1fc-48d3-a5a6-e2d71ff7986d"
+              "id": "fb4c5b71-cca6-4fdf-a251-9864816d2adb",
+              "catalogId": "1-2-001",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 3000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
             },
             {
-              "id": "4b1e87a8-a64c-4e48-8d3e-876d36b15eb5"
+              "id": "583f5f10-e8a0-4d53-a720-87d0511fc3dc",
+              "catalogId": "1-2-051",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 5000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
             },
             {
-              "id": "9e81b3b2-efb8-450f-ba9f-9cd7391587e2"
+              "id": "aad34bb7-fe72-488a-a7bf-7164cfdcce11",
+              "catalogId": "1-2-001",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 3000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
             },
             {
-              "id": "fae32038-5437-416c-8363-b99ac7efdf3f"
+              "id": "96077724-ca55-4330-8eb9-e4c29b4ddfe1",
+              "catalogId": "1-2-004",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 5000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
             },
             {
-              "id": "e4e52ade-d9b6-42b1-a496-25e20763421f"
+              "id": "69c5fdcb-c150-4bda-88aa-bd69ef768286",
+              "catalogId": "PR-032",
+              "lv": 1,
+              "delta": [],
+              "generation": 1
             },
             {
-              "id": "d821a5da-d073-4cab-a4a4-277687b8a30c"
+              "id": "0c2d0a3f-e4d5-4c51-9ae2-0626264f074d",
+              "catalogId": "1-2-106",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 6000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
             },
             {
-              "id": "29330d35-564c-45d3-b61c-002f086eeb78"
+              "id": "1abcd765-97ee-4d77-98da-612f15d03440",
+              "catalogId": "1-2-104",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 5000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
             },
             {
-              "id": "e2d289ee-6469-497c-b7b4-c27f8dbfedf6"
+              "id": "97819fec-bc91-460d-a3a7-317b41068e83",
+              "catalogId": "1-2-148",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "remain": 1,
+              "revealed": false
             },
             {
-              "id": "fb7572c3-14c1-4e46-8da0-e1b04091cbf5"
+              "id": "0289f01b-eb6c-46da-bb45-a3a011c4db22",
+              "catalogId": "1-2-122",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 3000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
             },
             {
-              "id": "e25dd734-cf76-4dd6-ac66-67f283c28845"
+              "id": "e24d0637-e172-4c9d-ac03-cafd4e6ca694",
+              "catalogId": "1-2-078",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "remain": 1,
+              "revealed": false
             },
             {
-              "id": "8374f182-d0bf-44d0-82c4-2359c6c9abb0"
+              "id": "6ea8a66e-5606-49e5-8d90-dc9176cbb8c2",
+              "catalogId": "PR-031",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 4000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
             },
             {
-              "id": "3bd673af-a584-41de-8c6e-c7d59368f409"
+              "id": "1b6d9c04-5bc3-4b6e-a547-2c251326598f",
+              "catalogId": "PR-031",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 4000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
             },
             {
-              "id": "d70f1224-1e36-4825-81cf-cdab0fac2c0e"
+              "id": "0f6707fd-9af1-4306-8cb6-2fa63e81020a",
+              "catalogId": "PR-028",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 7000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
             },
             {
-              "id": "f202fa30-190e-4108-9d4c-97621a049712"
+              "id": "4d80fb24-b736-4d65-83c0-270ec1eb8050",
+              "catalogId": "PR-028",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 7000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
             },
             {
-              "id": "174cb434-6adc-4dbf-a56a-6f8ded95d0f5"
+              "id": "32c58a06-5522-4540-862b-4363cec10f56",
+              "catalogId": "1-2-051",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 5000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
             },
             {
-              "id": "db465849-4720-4e42-a9d2-3d45b1da13a5"
+              "id": "29bb306c-8393-41c2-8e0b-9d2bb36e6925",
+              "catalogId": "1-2-057",
+              "lv": 1,
+              "delta": [],
+              "generation": 1
             },
             {
-              "id": "fec7f277-60b4-4052-adb6-b9723445c0e7"
+              "id": "1eebbc2b-49a5-4bb3-a5cc-0bb3b572e04a",
+              "catalogId": "1-2-071",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "remain": 1,
+              "revealed": false
             },
             {
-              "id": "46e188fe-3073-4d84-b14f-6919f595647b"
+              "id": "7a8dee50-f32e-4429-829f-ed2bbfe13c6a",
+              "catalogId": "1-2-122",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 3000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
             },
             {
-              "id": "734521ef-c2d5-42b6-865e-46a874975ac3"
+              "id": "85204afe-b748-4e6a-9476-0a4c4cc09e46",
+              "catalogId": "1-2-057",
+              "lv": 1,
+              "delta": [],
+              "generation": 1
             }
           ],
           "hand": [
             {
-              "id": "b61c0277-c781-415b-8198-75c473313051"
+              "id": "a5a20d22-e6d7-4efb-8069-19ceb5ef4ec2",
+              "catalogId": "1-2-071",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "remain": 1,
+              "revealed": false
             },
             {
-              "id": "503f73ae-2cfd-4413-a022-2b3c0ddc46cf"
+              "id": "c38864e8-f57f-4b9f-b98a-b7f69e09c5e9",
+              "catalogId": "1-2-007",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 1000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
             },
             {
-              "id": "b64058dd-5dae-4981-a05b-1ab1da6ec12b"
+              "id": "1a5ce250-bff1-49d8-98a4-2e9e072274a1",
+              "catalogId": "1-2-049",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 4000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
             },
             {
-              "id": "6d50bcc0-2a1c-486f-b280-75106f45a49f"
+              "id": "132bfb38-619c-46a5-a60b-2316bd3d30ab",
+              "catalogId": "1-2-099",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "remain": 1,
+              "revealed": false
             }
           ],
           "trash": [],
@@ -236,7 +528,7 @@
           "joker": {
             "card": [
               {
-                "id": "4d0b82c5-d88d-42bc-b500-8032f60a221a",
+                "id": "5097b7f4-e3a8-47ff-b5a9-2e846153826c",
                 "catalogId": "ルインリード",
                 "chara": "THE HERMIT",
                 "cost": 1,
@@ -244,7 +536,7 @@
                 "lv": 1
               },
               {
-                "id": "89554e25-f65d-4702-9d9c-a02f8a2e0f54",
+                "id": "1544ec5a-ab7e-40e3-9757-b014c86e15a4",
                 "catalogId": "ソウルエクスキューション",
                 "chara": "THE HIGH PRIESTESS",
                 "cost": 1,
@@ -263,176 +555,84 @@
             "max": 8
           }
         },
-        "x5pCmrjJdspAtJYU6oxnx": {
-          "id": "x5pCmrjJdspAtJYU6oxnx",
-          "name": "エージェント候補生",
+        "qUJjlapkwJbquZ0W_JbdP": {
+          "id": "qUJjlapkwJbquZ0W_JbdP",
+          "name": "Sweshelo",
           "library": [
-            "1-2-001",
-            "1-2-001",
-            "1-2-003",
-            "1-2-003",
-            "1-2-004",
-            "1-2-004",
-            "1-2-007",
-            "1-2-007",
-            "1-2-101",
-            "1-2-101",
-            "1-2-104",
-            "1-2-104",
-            "1-2-106",
-            "1-2-106",
-            "PR-028",
-            "PR-028",
-            "1-2-043",
-            "1-2-043",
-            "1-2-049",
-            "1-2-049",
-            "1-2-051",
-            "1-2-051",
-            "1-2-124",
-            "PR-016",
-            "PR-016",
-            "PR-031",
-            "PR-031",
-            "1-2-122",
-            "1-2-122",
-            "1-2-057",
-            "1-2-057",
-            "PR-032",
-            "1-2-078",
-            "1-2-141",
-            "PR-067",
-            "1-2-099",
-            "1-2-099",
-            "1-2-148",
-            "1-2-071",
-            "1-2-071"
+            "1-2-038",
+            "1-2-038",
+            "1-2-038",
+            "2-0-318",
+            "2-0-318",
+            "2-0-318",
+            "2-1-112",
+            "2-1-112",
+            "2-1-112",
+            "2-2-014",
+            "2-2-014",
+            "2-2-014",
+            "2-2-018",
+            "2-2-018",
+            "2-2-018",
+            "PR-065",
+            "PR-065",
+            "PR-201",
+            "PR-201",
+            "PR-201",
+            "SP-014",
+            "SP-014",
+            "SP-014",
+            "SP-059",
+            "SP-059",
+            "SP-059",
+            "1-2-147",
+            "1-2-147",
+            "1-2-147",
+            "1-3-063",
+            "1-3-063",
+            "1-3-063",
+            "2-1-141",
+            "2-1-141",
+            "PR-159",
+            "PR-159",
+            "PR-159",
+            "PR-034",
+            "PR-034",
+            "PR-034"
           ],
           "deck": [
             {
-              "id": "c2b05cf5-1ea3-4140-8266-158775f16769"
-            },
-            {
-              "id": "09e1a0b5-3950-41bc-b5b2-5991c020fd06"
-            },
-            {
-              "id": "e24ef651-450c-464e-b6c7-43f384437336"
-            },
-            {
-              "id": "578ff8db-f8c4-4276-94b6-dad846a66a8f"
-            },
-            {
-              "id": "eba9f4c5-e188-43c7-8bee-826c07b176d6"
-            },
-            {
-              "id": "de88e2d0-cd5e-44dc-a20a-c80088de7191"
-            },
-            {
-              "id": "d3664184-7b75-4893-a321-dba2855cd1e4"
-            },
-            {
-              "id": "1ab19574-4096-456b-8b0a-81bc309f4b7c"
-            },
-            {
-              "id": "9afa60f8-08f6-4214-adcb-97088d97330c"
-            },
-            {
-              "id": "cf2eb3a0-9cff-483c-890a-a844e7cbe809"
-            },
-            {
-              "id": "267dae4f-49a6-49fb-8b76-2cd5dfe42e7c"
-            },
-            {
-              "id": "166fe25e-5713-49ff-8737-ede95f914d13"
-            },
-            {
-              "id": "b16fae02-f65d-4c68-a42d-80b44034230e"
-            },
-            {
-              "id": "2fc8b61a-4216-4851-b188-4be6103ce762"
-            },
-            {
-              "id": "08b681e8-4604-4c3f-9853-223962749e9d"
-            },
-            {
-              "id": "53137d29-37f7-4e5e-8ada-de0f7d8012d6"
-            },
-            {
-              "id": "81b6b9fb-7206-459e-9f22-1b7b947c1d48"
-            },
-            {
-              "id": "255ed535-cc81-4057-9b5f-21625738adab"
-            },
-            {
-              "id": "0295725e-d7f5-45af-a439-5c24337daf9a"
-            },
-            {
-              "id": "42179d55-0dd3-4615-a39c-3147e4526486"
-            },
-            {
-              "id": "1ed97f17-9141-48a1-a2c8-60586009bf13"
-            },
-            {
-              "id": "afb51575-581b-4782-a36a-aa8fbd0bf496"
-            },
-            {
-              "id": "d6cca83e-8ffc-4c11-9d7b-f0292a515639"
-            },
-            {
-              "id": "4eb89612-0bc7-41b5-a5e3-9cea8ad7774a"
-            },
-            {
-              "id": "1b1e7ad6-6ca2-4951-9966-b75da6df322b"
-            },
-            {
-              "id": "5a67af7c-21e8-4ea4-bc9d-8840a57669cd"
-            },
-            {
-              "id": "962092a7-44c2-44a1-bec6-6b4e3bd620e5"
-            },
-            {
-              "id": "2753e650-1e93-4f45-92cd-6938f5af4ff7"
-            },
-            {
-              "id": "e843bd4c-50d3-41ac-b66d-92fb0b70e0d1"
-            },
-            {
-              "id": "597c6072-508b-4859-bcd3-5c60cc04aa89"
-            },
-            {
-              "id": "c97f36ea-755a-4af4-8841-c3d44f41adef"
-            },
-            {
-              "id": "3f5ec8f3-1cb4-4b93-aac8-883ba44ec25d"
-            },
-            {
-              "id": "b69a24e6-1eab-4a7d-a91f-e90255f91b1f"
-            },
-            {
-              "id": "39b170fe-cf6f-493f-b941-c6a3cba6f38a"
-            },
-            {
-              "id": "500561a3-7b48-485d-9bb1-61098be4a712"
-            },
-            {
-              "id": "66cd29a8-94d3-407d-bd92-5466e7aa0022"
-            }
-          ],
-          "hand": [
-            {
-              "id": "b8059d3d-7799-4250-a06c-ec959ec97221",
-              "catalogId": "1-2-001",
+              "id": "4fc0bcae-198e-484f-8eb7-da1da403f1d7",
+              "catalogId": "PR-201",
               "lv": 1,
               "delta": [],
               "generation": 1,
-              "bp": 3000,
+              "bp": 4000,
               "active": true,
               "isCopy": false,
               "isBooted": false
             },
             {
-              "id": "7dcbf7c4-e66c-4572-b5bf-316c2b1192bf",
-              "catalogId": "PR-067",
+              "id": "2a091b62-132f-4ced-a144-30868b58aaac",
+              "catalogId": "PR-034",
+              "lv": 1,
+              "delta": [],
+              "generation": 1
+            },
+            {
+              "id": "1adf1615-cf18-44d8-a513-e7f273eab746",
+              "catalogId": "PR-201",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 4000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
+            },
+            {
+              "id": "53492d26-abdd-41db-bce8-970ee9287831",
+              "catalogId": "PR-159",
               "lv": 1,
               "delta": [],
               "generation": 1,
@@ -440,8 +640,17 @@
               "revealed": false
             },
             {
-              "id": "209c6450-ad33-423e-aea5-b8ddeb055abf",
-              "catalogId": "PR-016",
+              "id": "2f24a520-1464-4090-aa00-9944cc95bb42",
+              "catalogId": "PR-159",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "remain": 1,
+              "revealed": false
+            },
+            {
+              "id": "e6f19c13-555c-4b30-86f6-75a07844b69e",
+              "catalogId": "1-2-038",
               "lv": 1,
               "delta": [],
               "generation": 1,
@@ -451,11 +660,360 @@
               "isBooted": false
             },
             {
-              "id": "808991a3-1466-4f1c-adae-f70ddf297cdd",
-              "catalogId": "1-2-057",
+              "id": "ac5c0327-5f76-4897-9452-6b1d7defa6fc",
+              "catalogId": "2-1-112",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 6000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
+            },
+            {
+              "id": "13b6af31-8b3e-451b-b22e-a1756b650b45",
+              "catalogId": "1-2-038",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 3000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
+            },
+            {
+              "id": "129c3e6e-5785-4ce0-8431-2b1abdcb7d82",
+              "catalogId": "2-2-014",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 3000,
+              "active": true,
+              "isCopy": false,
+              "hasBootAbility": true,
+              "isBooted": false
+            },
+            {
+              "id": "95a4c36b-17e1-4476-b7d5-cc7331ff08ad",
+              "catalogId": "2-1-141",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "remain": 1,
+              "revealed": false
+            },
+            {
+              "id": "1c77897e-754c-41f4-9f2d-0568d680eeea",
+              "catalogId": "2-2-018",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 6000,
+              "active": true,
+              "isCopy": false,
+              "hasBootAbility": true,
+              "isBooted": false
+            },
+            {
+              "id": "cfd53745-f2c5-4d7b-bb56-59563f25d0e7",
+              "catalogId": "1-2-038",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 3000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
+            },
+            {
+              "id": "7fe78fa4-7c5b-40b5-921c-d0243d08b706",
+              "catalogId": "1-3-063",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "remain": 1,
+              "revealed": false
+            },
+            {
+              "id": "e502ae4a-f886-4b69-a092-77cd13df1ce9",
+              "catalogId": "1-3-063",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "remain": 1,
+              "revealed": false
+            },
+            {
+              "id": "ddf88464-b16b-493b-9341-14368f7ea463",
+              "catalogId": "2-1-112",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 6000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
+            },
+            {
+              "id": "81c876bd-4afd-433a-9dd2-ad3aa54df7ee",
+              "catalogId": "1-2-147",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "remain": 1,
+              "revealed": false
+            },
+            {
+              "id": "ef55af55-8227-4446-ad6e-850cc908e9f3",
+              "catalogId": "2-2-018",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 6000,
+              "active": true,
+              "isCopy": false,
+              "hasBootAbility": true,
+              "isBooted": false
+            },
+            {
+              "id": "ef80f831-48e2-4f30-8076-1a4c6ac62eb7",
+              "catalogId": "2-0-318",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 5000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
+            },
+            {
+              "id": "5ab36454-4076-446b-be9d-de36fd86ddb9",
+              "catalogId": "2-2-014",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 3000,
+              "active": true,
+              "isCopy": false,
+              "hasBootAbility": true,
+              "isBooted": false
+            },
+            {
+              "id": "80423b6a-e7c9-43e9-9347-cc351761c795",
+              "catalogId": "PR-034",
               "lv": 1,
               "delta": [],
               "generation": 1
+            },
+            {
+              "id": "7e1ef0ea-e7b7-49f4-9074-e29342989b49",
+              "catalogId": "PR-065",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 7000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
+            },
+            {
+              "id": "2b491387-e601-4582-bb1f-e45d7f8666d6",
+              "catalogId": "SP-014",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 4000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
+            },
+            {
+              "id": "818de471-767c-4512-a779-1e068bbd510e",
+              "catalogId": "2-0-318",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 5000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
+            },
+            {
+              "id": "bf1da2f6-a35d-4f8c-b92f-74940e87b64f",
+              "catalogId": "SP-014",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 4000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
+            },
+            {
+              "id": "7043ec79-9807-428d-9efc-2f1cf7619817",
+              "catalogId": "SP-014",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 4000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
+            },
+            {
+              "id": "49a225d8-1e5f-4a0a-bcdb-513d8d7e8a0b",
+              "catalogId": "2-2-018",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 6000,
+              "active": true,
+              "isCopy": false,
+              "hasBootAbility": true,
+              "isBooted": false
+            },
+            {
+              "id": "1918bdbe-45e7-4952-b8f0-bdcd160e276f",
+              "catalogId": "2-1-112",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 6000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
+            },
+            {
+              "id": "ea34fc06-cd1a-481d-b3ea-f9a0e03c211c",
+              "catalogId": "2-2-014",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 3000,
+              "active": true,
+              "isCopy": false,
+              "hasBootAbility": true,
+              "isBooted": false
+            },
+            {
+              "id": "96a3beec-ec1b-4ce8-a38e-f1fc374c2ba2",
+              "catalogId": "PR-201",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 4000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
+            },
+            {
+              "id": "76c1cffa-97d8-4ce3-a0c9-b16ed71eb408",
+              "catalogId": "1-2-147",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "remain": 1,
+              "revealed": false
+            },
+            {
+              "id": "7f30cb3e-3a3a-40f8-a99a-ad28517cc0c2",
+              "catalogId": "1-2-147",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "remain": 1,
+              "revealed": false
+            },
+            {
+              "id": "a64653e1-81c2-459b-b272-67bc17eb2c55",
+              "catalogId": "PR-065",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 7000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
+            },
+            {
+              "id": "f8643448-d75f-4f6c-9b87-82614c256778",
+              "catalogId": "1-3-063",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "remain": 1,
+              "revealed": false
+            },
+            {
+              "id": "4290b86e-a3b7-4786-8902-638c4f02b8b7",
+              "catalogId": "SP-059",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 5000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
+            },
+            {
+              "id": "ee2d152b-c3b0-4b5e-b89c-bfa1f24ef53d",
+              "catalogId": "SP-059",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 5000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
+            },
+            {
+              "id": "9558f678-a747-418d-88a9-e2a6a63c6f58",
+              "catalogId": "SP-059",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 5000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
+            }
+          ],
+          "hand": [
+            {
+              "id": "1b32aba0-e002-4bef-901d-c8bc9cf3ede4",
+              "catalogId": "2-0-318",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "bp": 5000,
+              "active": true,
+              "isCopy": false,
+              "isBooted": false
+            },
+            {
+              "id": "136d3493-e651-4f31-8c48-fc7554f0514e",
+              "catalogId": "PR-034",
+              "lv": 1,
+              "delta": [],
+              "generation": 1
+            },
+            {
+              "id": "90b177df-cddb-46ef-926e-8a2d35832452",
+              "catalogId": "PR-159",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "remain": 1,
+              "revealed": false
+            },
+            {
+              "id": "fd3ed7cd-f97f-40da-b68d-b3189bd146fa",
+              "catalogId": "2-1-141",
+              "lv": 1,
+              "delta": [],
+              "generation": 1,
+              "remain": 1,
+              "revealed": false
             }
           ],
           "trash": [],
@@ -466,7 +1024,7 @@
           "joker": {
             "card": [
               {
-                "id": "e00c80fd-a88f-47a4-a4c4-45ccea85b7d6",
+                "id": "79ad2122-3d57-414e-89ac-833a0018b500",
                 "catalogId": "ルインリード",
                 "chara": "THE HERMIT",
                 "cost": 1,
@@ -474,10 +1032,10 @@
                 "lv": 1
               },
               {
-                "id": "d598dc70-4050-4d2b-a4d5-81b4491d2022",
-                "catalogId": "ソウルエクスキューション",
-                "chara": "THE HIGH PRIESTESS",
-                "cost": 1,
+                "id": "feefd6e2-d725-4134-8753-20ee5aca229b",
+                "catalogId": "エイミングクラッシュ",
+                "chara": "THE CHARIOT",
+                "cost": 0,
                 "isAvailable": false,
                 "lv": 1
               }
