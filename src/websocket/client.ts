@@ -42,11 +42,15 @@ export class GameWebSocketClient {
    */
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
+      let settled = false;
+
       try {
         this.isManualDisconnect = false;
         this.ws = new WebSocket(this.config.url);
 
         this.ws.onopen = () => {
+          if (settled) return;
+          settled = true;
           console.log("[WebSocket] Connected to game server");
           this.reconnectAttempt = 0;
           this.connectHandlers.forEach((handler) => handler());
@@ -68,11 +72,23 @@ export class GameWebSocketClient {
           const error = new Error("WebSocket error occurred");
           console.error("[WebSocket] Error:", event);
           this.errorHandlers.forEach((handler) => handler(error));
+
+          // Reject promise if not yet settled (initial connection failure)
+          if (!settled) {
+            settled = true;
+            reject(error);
+          }
         };
 
         this.ws.onclose = () => {
           console.log("[WebSocket] Disconnected from game server");
           this.disconnectHandlers.forEach((handler) => handler());
+
+          // Reject promise if not yet settled (connection closed before open)
+          if (!settled) {
+            settled = true;
+            reject(new Error("WebSocket connection closed before opening"));
+          }
 
           // Auto-reconnect if enabled and not manually disconnected
           if (
