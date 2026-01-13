@@ -61,6 +61,14 @@ Claude API (AI Decision Making)
 - `end_turn`: End your turn
 - `mulligan`: Mulligan decision
 
+#### Sandbox Tools (for move evaluation)
+- `check_sandbox`: Check sandbox availability
+- `create_sandbox_room`: Create sandbox room (ID: 99999)
+- `load_sandbox_state`: Load game state into sandbox
+- `start_sandbox_game`: Start sandbox game (skip mulligan)
+- `destroy_sandbox_room`: Destroy sandbox room
+- `evaluate_move`: Full workflow to evaluate a move
+
 ## Tech Stack
 
 - **Language**: TypeScript
@@ -82,7 +90,10 @@ the-emperor/
 │   │   └── tools/           # MCP tools
 │   │       ├── catalog.ts   # Card catalog access tools
 │   │       ├── game-state.ts # Game state access tools
-│   │       └── actions.ts   # Game action execution tools
+│   │       ├── actions.ts   # Game action execution tools
+│   │       └── sandbox.ts   # Sandbox evaluation tools
+│   ├── sandbox/             # Sandbox client
+│   │   └── client.ts        # HTTP client for sandbox API
 │   ├── catalog/             # Card catalog service
 │   │   └── index.ts         # Catalog access and search
 │   ├── game/                # Game state management
@@ -97,6 +108,9 @@ the-emperor/
 ├── the-fool/                # Submodule: Game simulator (reference)
 ├── the-magician/            # Submodule: WebSocket client reference
 ├── tests/                   # Test files
+│   ├── agent.test.ts        # Agent tests
+│   └── sandbox-integration.test.ts # Sandbox integration tests
+├── SANDBOX_TESTING.md       # Sandbox testing guide
 ├── package.json
 └── tsconfig.json
 ```
@@ -216,10 +230,13 @@ See the full specification in the API documentation.
 - [x] MCP server infrastructure
 - [x] Card catalog integration
 - [x] Game state management
-- [x] MCP tools implementation (catalog, state, actions)
-- [ ] Integration testing with game server
+- [x] MCP tools implementation (catalog, state, actions, sandbox)
+- [x] Sandbox API client implementation
+- [x] Sandbox MCP tools (6 tools for move evaluation)
+- [x] Integration testing framework
+- [ ] Full integration testing with live game server
 - [ ] AI decision-making strategies
-- [ ] Sandbox evaluation framework
+- [ ] Advanced move evaluation algorithms
 - [ ] Performance optimization
 
 ## Contributing

@@ -13,12 +13,19 @@ import {
 import { catalogTools } from "./tools/catalog.ts";
 import { gameStateTools } from "./tools/game-state.ts";
 import { actionTools, setActionSender } from "./tools/actions.ts";
+import { sandboxTools, setSandboxClient } from "./tools/sandbox.ts";
 import { GameWebSocketClient } from "../websocket/client.ts";
+import { SandboxClient } from "../sandbox/client.ts";
 import { gameStateManager } from "../game/state.ts";
 import type { ServerMessage } from "../types/game.ts";
 
 // Combine all tools
-const allTools = [...catalogTools, ...gameStateTools, ...actionTools];
+const allTools = [
+  ...catalogTools,
+  ...gameStateTools,
+  ...actionTools,
+  ...sandboxTools,
+];
 
 /**
  * Create MCP server
@@ -59,7 +66,8 @@ function createServer() {
   });
 
   // Call tool handler
-  server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  // @ts-ignore - MCP SDK type compatibility issue
+  server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
     const toolName = request.params.name;
     const tool = allTools.find((t) => t.name === toolName);
 
@@ -176,6 +184,38 @@ async function main() {
     console.error(
       "[MCP] No WebSocket configuration found. Set GAME_SERVER_URL and PLAYER_ID to connect."
     );
+  }
+
+  // Setup sandbox client if base URL is provided
+  const sandboxBaseUrl =
+    process.env.SANDBOX_BASE_URL || process.env.GAME_SERVER_URL?.replace("ws://", "http://").replace("wss://", "https://");
+
+  if (sandboxBaseUrl) {
+    // Remove WebSocket path if present and extract base URL
+    const baseUrl = sandboxBaseUrl.split("?")[0]?.replace(/\/$/, "") || sandboxBaseUrl;
+    const httpBaseUrl = baseUrl.startsWith("ws")
+      ? baseUrl.replace("ws://", "http://").replace("wss://", "https://")
+      : baseUrl;
+
+    console.error(`[MCP] Initializing sandbox client: ${httpBaseUrl}`);
+    const sandboxClient = new SandboxClient(httpBaseUrl);
+    setSandboxClient(sandboxClient);
+
+    // Check if sandbox is enabled
+    try {
+      const isEnabled = await sandboxClient.isEnabled();
+      if (isEnabled) {
+        console.error("[MCP] Sandbox mode is enabled on the server");
+      } else {
+        console.error(
+          "[MCP] Sandbox mode is not enabled on the server (this is normal for production)"
+        );
+      }
+    } catch (error) {
+      console.error("[MCP] Could not check sandbox status:", error);
+    }
+  } else {
+    console.error("[MCP] No sandbox URL configured. Sandbox tools will not be available.");
   }
 
   // Start MCP server with stdio transport
