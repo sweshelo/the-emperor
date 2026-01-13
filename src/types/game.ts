@@ -4,7 +4,7 @@
  */
 
 import type { IPlayer, IUnit, ICard, IDelta, Rule } from "../../suit/types/index.ts";
-import type { Message, Action } from "../../suit/types/message/message.ts";
+import type { Message } from "../../suit/types/message/message.ts";
 import type {
   Payload,
   PlayerEntryPayload,
@@ -82,7 +82,7 @@ export interface OperationMessage {
 export interface Option {
   id: string;
   name: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**
@@ -151,3 +151,70 @@ export const Color = {
 export type ColorType = (typeof Color)[keyof typeof Color];
 
 export type { IPlayer, IUnit, ICard, IDelta, Rule };
+
+// ============================================
+// Client-side payload types for MCP tools
+// ============================================
+// These types are looser than the suit types because the MCP client
+// only needs to provide IDs - the server resolves full object data
+
+/** Minimal reference to a card/unit by ID */
+interface CardRef {
+  id: string;
+}
+
+/** Card reference with catalog info */
+interface CardRefWithCatalog extends CardRef {
+  catalogId: string;
+}
+
+/** Client-side TriggerSet payload (server resolves full card data from ID) */
+export interface ClientTriggerSetPayload {
+  type: "TriggerSet";
+  player: string;
+  target: CardRefWithCatalog;
+}
+
+/** Client-side Attack payload (server resolves full unit data from ID) */
+export interface ClientAttackPayload {
+  type: "Attack";
+  player: string;
+  target: CardRef;
+}
+
+/** Client-side Boot payload (server resolves full unit data from ID) */
+export interface ClientBootPayload {
+  type: "Boot";
+  player: string;
+  target: CardRef;
+}
+
+/** Client-side Withdrawal payload (server resolves full unit data from ID) */
+export interface ClientWithdrawalPayload {
+  type: "Withdrawal";
+  player: string;
+  target: CardRef;
+}
+
+/**
+ * MCP-friendly client payload types
+ * Uses looser types for payloads where the server only needs the ID
+ */
+export type McpClientPayload =
+  | PlayerEntryPayload
+  | DebugMakePayload
+  | DebugDrivePayload
+  | DebugDrawPayload
+  | UnitDrivePayload
+  | EvolveDrivePayload
+  | JokerDrivePayload
+  | ClientTriggerSetPayload
+  | OverridePayload
+  | ClientAttackPayload
+  | BlockPayload
+  | ClientBootPayload
+  | ClientWithdrawalPayload
+  | DiscardPayload
+  | ChoosePayload
+  | ContinuePayload
+  | MulliganPayload;

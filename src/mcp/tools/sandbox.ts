@@ -3,42 +3,56 @@
  */
 
 import type { ToolDefinition } from "../types/index.ts";
+import type { GameState } from "../../types/game.ts";
 import { SandboxClient } from "../../sandbox/client.ts";
 import { gameStateManager } from "../../game/state.ts";
+import {
+  parseBoolean,
+  parseString,
+  parseOptionalObject,
+  isPlainObject,
+} from "../../schemas/index.ts";
 
 /**
- * Deep merge two objects, recursively merging nested objects
+ * Merge modifications into a GameState object
+ * This creates a new GameState with the modifications applied
  */
-function deepMerge<T extends Record<string, unknown>>(
-  target: T,
-  source: Partial<T>
-): T {
-  const result = { ...target };
+function mergeGameStateModifications(
+  state: GameState,
+  modifications: Record<string, unknown>
+): GameState {
+  // Create a deep copy and merge modifications
+  // We know the structure is valid because we start with a valid GameState
+  // and only merge compatible modifications
+  const gameMods = isPlainObject(modifications.game) ? modifications.game : {};
+  const merged: GameState = {
+    rule: state.rule,
+    game: {
+      round: state.game.round,
+      turn: state.game.turn,
+      ...gameMods,
+    },
+    players: { ...state.players },
+  };
 
-  for (const key in source) {
-    if (Object.prototype.hasOwnProperty.call(source, key)) {
-      const sourceValue = source[key];
-      const targetValue = result[key];
-
-      if (
-        sourceValue !== null &&
-        typeof sourceValue === "object" &&
-        !Array.isArray(sourceValue) &&
-        targetValue !== null &&
-        typeof targetValue === "object" &&
-        !Array.isArray(targetValue)
-      ) {
-        result[key] = deepMerge(
-          targetValue as Record<string, unknown>,
-          sourceValue as Record<string, unknown>
-        ) as T[Extract<keyof T, string>];
-      } else {
-        result[key] = sourceValue as T[Extract<keyof T, string>];
+  // Apply player-level modifications if present
+  if (isPlainObject(modifications.players)) {
+    for (const [playerId, playerMods] of Object.entries(modifications.players)) {
+      if (isPlainObject(playerMods) && merged.players[playerId]) {
+        merged.players[playerId] = {
+          ...merged.players[playerId],
+          ...playerMods,
+        };
       }
     }
   }
 
-  return result;
+  // Apply rule modifications if present
+  if (isPlainObject(modifications.rule)) {
+    merged.rule = { ...state.rule, ...modifications.rule };
+  }
+
+  return merged;
 }
 
 // Sandbox client instance (will be set externally)
@@ -164,9 +178,9 @@ export const loadSandboxStateTool: ToolDefinition = {
   },
   handler: async (args) => {
     const client = ensureSandboxClient();
-    const useCurrentState = args.useCurrentState as boolean;
+    const useCurrentState = parseBoolean(args, "useCurrentState");
 
-    let state;
+    let state: GameState | Record<string, unknown>;
     if (useCurrentState) {
       const currentState = gameStateManager.getState();
       if (!currentState) {
@@ -182,7 +196,8 @@ export const loadSandboxStateTool: ToolDefinition = {
       }
       state = currentState;
     } else {
-      if (!args.customState) {
+      const customState = parseOptionalObject(args, "customState");
+      if (!customState) {
         return {
           content: [
             {
@@ -193,7 +208,7 @@ export const loadSandboxStateTool: ToolDefinition = {
           isError: true,
         };
       }
-      state = args.customState as any;
+      state = customState;
     }
 
     try {
@@ -325,8 +340,8 @@ export const evaluateMoveTool: ToolDefinition = {
   },
   handler: async (args) => {
     const client = ensureSandboxClient();
-    const moveDescription = args.moveDescription as string;
-    const stateModifications = args.stateModifications as any;
+    const moveDescription = parseString(args, "moveDescription");
+    const stateModifications = parseOptionalObject(args, "stateModifications");
 
     console.log(`[Sandbox] Evaluating move: ${moveDescription}`);
 
@@ -345,14 +360,12 @@ export const evaluateMoveTool: ToolDefinition = {
         };
       }
 
-      // Apply modifications if provided (deep merge to preserve nested structures)
-      let testState = currentState;
-      if (stateModifications) {
-        testState = deepMerge(currentState, stateModifications);
-      }
-
-      // Setup sandbox
-      const result = await client.setupAndRun(testState);
+      // Setup sandbox - use current state directly or merge modifications
+      const result = stateModifications
+        ? await client.setupAndRun(
+            mergeGameStateModifications(currentState, stateModifications)
+          )
+        : await client.setupAndRun(currentState);
 
       return {
         content: [

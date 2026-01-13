@@ -68,6 +68,7 @@ describe("Sandbox Integration Tests", () => {
       await client.createRoom();
 
       // Sample game state
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const sampleState: any = {
         game: {
           round: 1,
@@ -134,6 +135,7 @@ describe("Sandbox Integration Tests", () => {
         return;
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const sampleState: any = {
         game: {
           round: 3,

@@ -81,12 +81,13 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
           const greenUnitId2 = `test-green-${Date.now()}-2`;
 
           // Add to deck with proper structure (catalogId is needed for effect to find green units)
+          /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-assertions */
           player.deck = [
             { id: greenUnitId1, catalogId: TEST_CARD_ID, color: 4 },
             { id: greenUnitId2, catalogId: TEST_CARD_ID, color: 4 },
             ...(player.deck || []),
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           ] as any;
+          /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-assertions */
         }
       }
     }
@@ -135,7 +136,16 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
       // Get player info
       const playerIds = getPlayerIds(debugState);
       const playerId = playerIds[0];
+
+      if (!playerId) {
+        throw new Error("No player ID found");
+      }
+
       const playerInfo = debugState.players[playerId];
+
+      if (!playerInfo) {
+        throw new Error(`Player ${playerId} not found`);
+      }
 
       await client.createRoom();
       await client.loadState(debugState);
@@ -160,6 +170,7 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
         "99999",
         playerId,
         playerInfo.name,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-assertions
         (playerInfo as any).library || [],
         []
       );
@@ -175,6 +186,7 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
       expect(syncMessages.length).toBeGreaterThan(0);
 
       if (syncMessages.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-assertions
         const syncMsg = syncMessages[0] as any;
         console.log("✓ Received Sync message");
         console.log(`  Debug mode enabled: ${syncMsg.payload?.body?.rule?.debug?.enable}`);
@@ -206,6 +218,11 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
       }
 
       const playerInfo = debugState.players[playerId];
+
+      if (!playerInfo) {
+        throw new Error(`Player ${playerId} not found`);
+      }
+
       console.log(`Player: ${playerInfo.name} (${playerId})`);
 
       await client.createRoom();
@@ -217,11 +234,13 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
         reconnect: false,
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let syncMessages: any[] = [];
 
       wsClient.onMessage((message) => {
         receivedMessages.push(message);
-        console.log(`  Received: ${message.payload?.type || message.type}`);
+        const msgType = message.payload?.type ?? "unknown";
+        console.log(`  Received: ${msgType}`);
 
         if (message.payload?.type === "Sync") {
           syncMessages.push(message);
@@ -240,8 +259,9 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
         wsClient,
         "99999", // Sandbox room ID
         playerId,
-        playerInfo.name,
-        (playerInfo as any).library || [],
+        playerInfo?.name ?? "Unknown",
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-assertions
+        (playerInfo as any)?.library || [],
         []
       );
 
@@ -297,6 +317,10 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
 
       const playerInfo = debugState.players[playerId];
 
+      if (!playerInfo) {
+        throw new Error(`Player ${playerId} not found`);
+      }
+
       await client.createRoom();
       await client.loadState(debugState);
 
@@ -306,6 +330,7 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
         reconnect: false,
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let syncMessages: any[] = [];
 
       wsClient.onMessage((message) => {
@@ -317,8 +342,9 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
 
           if (players) {
             const syncPlayerIds = Object.keys(players);
-            if (syncPlayerIds.length > 0) {
-              const player = players[syncPlayerIds[0]];
+            const firstPlayerId = syncPlayerIds[0];
+            if (firstPlayerId) {
+              const player = players[firstPlayerId];
               console.log(`  Hand: ${player?.hand?.length}, Field: ${player?.field?.length}`);
             }
           }
@@ -338,6 +364,7 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
         "99999",
         playerId,
         playerInfo.name,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-assertions
         (playerInfo as any).library || [],
         []
       );
@@ -365,6 +392,7 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
       expect(afterHand.length).toBeGreaterThan(beforeHand.length);
 
       // Find the created card ID
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const createdCard = afterHand.find((card: any) => card.catalogId === TEST_CARD_ID);
       if (!createdCard) {
         throw new Error("Created card not found in hand");
@@ -377,9 +405,6 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
       const beforeSummonHand = beforeSummon?.payload?.body?.players?.[playerId]?.hand || [];
       const beforeSummonField = beforeSummon?.payload?.body?.players?.[playerId]?.field || [];
       console.log(`  Hand: ${beforeSummonHand.length}, Field: ${beforeSummonField.length}`);
-
-      // Record the current message index before UnitDrive
-      const messageIndexBeforeUnitDrive = receivedMessages.length;
 
       unitDrive(wsClient, playerId, createdCard.id);
 
@@ -397,7 +422,7 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
       if (!promptId) {
         throw new Error("No promptId in DisplayEffect message");
       }
-      sendContinue(wsClient, promptId);
+      sendContinue(wsClient, promptId, playerId);
       console.log(`  ✓ Continue sent for promptId: ${promptId}`);
 
       // Wait for the Sync message after DisplayEffect (effect applied)
@@ -419,11 +444,9 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
       console.log(`\n[Step 5] Waiting for effect resolution to complete...`);
 
       // Wait for Defrost or timeout (some game modes may not send Defrost)
-      let defrostReceived = false;
       try {
-        const defrostMsg = await waitForDefrost(receivedMessages, displayEffectIndex, 2000);
+        await waitForDefrost(receivedMessages, displayEffectIndex, 2000);
         console.log(`  ✓ Defrost received - effect resolution complete`);
-        defrostReceived = true;
       } catch {
         console.log(`  Defrost not received (this may be normal in sandbox mode)`);
       }
@@ -491,7 +514,16 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
       // Get player info
       const playerIds = getPlayerIds(debugState);
       const playerId = playerIds[0];
+
+      if (!playerId) {
+        throw new Error("No player ID found");
+      }
+
       const playerInfo = debugState.players[playerId];
+
+      if (!playerInfo) {
+        throw new Error(`Player ${playerId} not found`);
+      }
 
       await client.createRoom();
       await client.loadState(debugState);
@@ -523,6 +555,7 @@ describe("Sandbox Advanced Tests - Debug Mode & Card Effects", () => {
         "99999",
         playerId,
         playerInfo.name,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-assertions
         (playerInfo as any).library || [],
         []
       );

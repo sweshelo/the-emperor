@@ -2,7 +2,20 @@
  * WebSocket client for CODE OF JOKER game server
  */
 
-import type { ServerMessage, ClientMessage } from "../types/game.ts";
+import type { ServerMessage, ClientMessage, McpClientPayload } from "../types/game.ts";
+import { isServerMessage } from "../schemas/index.ts";
+
+/**
+ * Message structure for MCP actions
+ * Uses McpClientPayload which has looser types (IDs only instead of full objects)
+ */
+interface McpClientMessage {
+  action: {
+    handler: "core";
+    type: string;
+  };
+  payload: McpClientPayload;
+}
 
 export type MessageHandler = (message: ServerMessage) => void;
 export type ErrorHandler = (error: Error) => void;
@@ -59,8 +72,11 @@ export class GameWebSocketClient {
 
         this.ws.onmessage = (event) => {
           try {
-            const message = JSON.parse(event.data) as ServerMessage;
-            this.messageHandlers.forEach((handler) => handler(message));
+            const data: unknown = JSON.parse(event.data);
+            if (!isServerMessage(data)) {
+              throw new Error("Invalid server message format");
+            }
+            this.messageHandlers.forEach((handler) => handler(data));
           } catch (error) {
             console.error("[WebSocket] Failed to parse message:", error);
             const err = error instanceof Error ? error : new Error(String(error));
@@ -137,6 +153,30 @@ export class GameWebSocketClient {
     console.log("[WebSocket] Sending:", message.payload.type);
     this.ws.send(payload);
   }
+
+  /**
+   * Send an MCP action to the server
+   * Uses McpClientPayload which has looser types (IDs only instead of full objects)
+   * The server resolves full object data from IDs
+   */
+  sendMcpAction(payload: McpClientPayload): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      throw new Error("WebSocket is not connected");
+    }
+
+    const message: McpClientMessage = {
+      action: {
+        handler: "core",
+        type: "game",
+      },
+      payload,
+    };
+
+    const messageJson = JSON.stringify(message);
+    console.log("[WebSocket] Sending MCP action:", payload.type);
+    this.ws.send(messageJson);
+  }
+
 
   /**
    * Check if connected

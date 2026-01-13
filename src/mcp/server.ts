@@ -18,6 +18,15 @@ import { GameWebSocketClient } from "../websocket/client.ts";
 import { SandboxClient } from "../sandbox/client.ts";
 import { gameStateManager } from "../game/state.ts";
 import type { ServerMessage } from "../types/game.ts";
+import { parseGameState, parseChoices } from "../schemas/index.ts";
+
+// Type for MCP CallTool request
+interface CallToolRequest {
+  params: {
+    name: string;
+    arguments?: Record<string, unknown>;
+  };
+}
 
 // Combine all tools
 const allTools = [
@@ -47,11 +56,13 @@ function createServer() {
   let wsClient: GameWebSocketClient | null = null;
 
   // Setup action sender for action tools
-  setActionSender((action) => {
+  setActionSender((payload) => {
     if (!wsClient || !wsClient.isConnected()) {
       throw new Error("WebSocket client not connected");
     }
-    wsClient.send(action);
+    // Use sendMcpAction which properly handles McpClientPayload
+    // (looser types with IDs only - server resolves full data)
+    wsClient.sendMcpAction(payload);
   });
 
   // List tools handler
@@ -67,7 +78,7 @@ function createServer() {
 
   // Call tool handler
   // @ts-ignore - MCP SDK type compatibility issue
-  server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
+  server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest) => {
     const toolName = request.params.name;
     const tool = allTools.find((t) => t.name === toolName);
 
@@ -114,21 +125,40 @@ export function setupWebSocketClient(url: string, playerId: string): GameWebSock
 
   // Setup message handlers
   wsClient.onMessage((message: ServerMessage) => {
-    console.log(`[MCP] Received message: ${message.type}`);
+    const payload = message.payload;
+    const payloadType = "type" in payload ? payload.type : "unknown";
+    console.log(`[MCP] Received message: ${payloadType}`);
 
-    switch (message.type) {
+    switch (payloadType) {
       case "Sync":
-        gameStateManager.updateState(message.body);
+        if ("body" in payload) {
+          const gameState = parseGameState(payload.body);
+          if (gameState) {
+            gameStateManager.updateState(gameState);
+          }
+        }
         break;
 
       case "Choices":
-        gameStateManager.setChoice(message);
+        if ("promptId" in payload && "player" in payload && "choices" in payload) {
+          const choices = parseChoices(payload.choices);
+          if (choices) {
+            gameStateManager.setChoice({
+              type: "Choices",
+              promptId: payload.promptId,
+              player: payload.player,
+              choices,
+            });
+          }
+        }
         break;
 
       case "TurnChange":
-        console.log(
-          `[MCP] Turn changed to ${message.player} (${message.isFirst ? "first" : "second"})`
-        );
+        if ("player" in payload && "isFirst" in payload) {
+          console.log(
+            `[MCP] Turn changed to ${payload.player} (${payload.isFirst ? "first" : "second"})`
+          );
+        }
         break;
 
       case "MulliganStart":
@@ -136,7 +166,9 @@ export function setupWebSocketClient(url: string, playerId: string): GameWebSock
         break;
 
       case "Operation":
-        console.log(`[MCP] Operation: ${message.action}`);
+        if ("action" in payload) {
+          console.log(`[MCP] Operation: ${payload.action}`);
+        }
         break;
     }
   });

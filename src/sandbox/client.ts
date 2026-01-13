@@ -3,36 +3,26 @@
  */
 
 import type { GameState } from "../types/game.ts";
+import {
+  parseSandboxStatus,
+  parseSandboxCreateResponse,
+  parseSandboxLoadStateResponse,
+  parseSandboxStartResponse,
+  parseSandboxDestroyResponse,
+  type SandboxStatus,
+  type SandboxCreateResponse,
+  type SandboxLoadStateResponse,
+  type SandboxStartResponse,
+  type SandboxDestroyResponse,
+} from "../schemas/index.ts";
 
-export interface SandboxStatus {
-  enabled: boolean;
-  roomId: string;
-  roomExists: boolean;
-  playerCount: number;
-}
-
-export interface SandboxCreateResponse {
-  success: boolean;
-  roomId: string;
-}
-
-export interface SandboxLoadStateResponse {
-  success: boolean;
-  message: string;
-  round: number;
-  turn: number;
-}
-
-export interface SandboxStartResponse {
-  success: boolean;
-  message: string;
-  playerCount: number;
-}
-
-export interface SandboxDestroyResponse {
-  success: boolean;
-  message: string;
-}
+export type {
+  SandboxStatus,
+  SandboxCreateResponse,
+  SandboxLoadStateResponse,
+  SandboxStartResponse,
+  SandboxDestroyResponse,
+};
 
 /** Default sandbox server URL */
 const DEFAULT_SANDBOX_URL = "http://localhost:5000";
@@ -61,7 +51,8 @@ export class SandboxClient {
       );
     }
 
-    return (await response.json()) as SandboxStatus;
+    const data: unknown = await response.json();
+    return parseSandboxStatus(data);
   }
 
   /**
@@ -81,13 +72,16 @@ export class SandboxClient {
       );
     }
 
-    return (await response.json()) as SandboxCreateResponse;
+    const data: unknown = await response.json();
+    return parseSandboxCreateResponse(data);
   }
 
   /**
    * Load game state from SyncPayload
    */
-  async loadState(state: GameState): Promise<SandboxLoadStateResponse> {
+  async loadState(
+    state: GameState | Record<string, unknown>
+  ): Promise<SandboxLoadStateResponse> {
     const response = await fetch(`${this.baseUrl}/api/sandbox/load-state`, {
       method: "POST",
       headers: {
@@ -103,7 +97,8 @@ export class SandboxClient {
       );
     }
 
-    return (await response.json()) as SandboxLoadStateResponse;
+    const data: unknown = await response.json();
+    return parseSandboxLoadStateResponse(data);
   }
 
   /**
@@ -123,7 +118,8 @@ export class SandboxClient {
       );
     }
 
-    return (await response.json()) as SandboxStartResponse;
+    const data: unknown = await response.json();
+    return parseSandboxStartResponse(data);
   }
 
   /**
@@ -143,7 +139,8 @@ export class SandboxClient {
       );
     }
 
-    return (await response.json()) as SandboxDestroyResponse;
+    const data: unknown = await response.json();
+    return parseSandboxDestroyResponse(data);
   }
 
   /**

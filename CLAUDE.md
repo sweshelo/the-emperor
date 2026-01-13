@@ -1,4 +1,53 @@
 
+## Type Safety Guidelines
+
+> [!CAUTION]
+> 以下の型を安全でなくするコードは**通常のコードでは禁止**です。コミットしないでください。
+
+### 禁止されるパターン
+
+1. **`as` による型アサーション**
+   ```ts
+   // NG
+   const value = someValue as SomeType;
+   const value = <SomeType>someValue;
+   ```
+
+2. **`as any` による型の無効化**
+   ```ts
+   // NG
+   const value = someValue as any;
+   ```
+
+3. **Non-null assertion (`!`)**
+   ```ts
+   // NG
+   const value = maybeNull!;
+   const value = obj.prop!.nested;
+   ```
+
+### テストコードでの例外
+
+`tests/` 配下のテストファイルでは、モックを作成する上でどうしても必要な場合に限り、**行単位**で無効化できます。
+
+```ts
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockValue = {} as any;
+
+// oxlint-ignore-next-line typescript/no-explicit-any
+const mockValue = {} as any;
+```
+
+### Lint コマンド
+
+```sh
+bun run lint          # ESLint + oxlint
+bun run lint:eslint   # ESLint のみ
+bun run lint:oxlint   # oxlint のみ
+```
+
+---
+
 Default to using Bun instead of Node.js.
 
 - Use `bun <file>` instead of `node <file>` or `ts-node <file>`

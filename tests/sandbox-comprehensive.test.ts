@@ -69,6 +69,7 @@ describe("Sandbox Comprehensive Tests", () => {
       await client.createRoom();
 
       // Extract game state from sync.json
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-assertions
       const gameState: GameState = syncData.payload.body as any;
 
       // Load state
@@ -106,6 +107,7 @@ describe("Sandbox Comprehensive Tests", () => {
 
       // Setup: create room and load state
       await client.createRoom();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-assertions
       const gameState: GameState = syncData.payload.body as any;
       await client.loadState(gameState);
 
@@ -130,6 +132,7 @@ describe("Sandbox Comprehensive Tests", () => {
 
       // Setup sandbox
       await client.createRoom();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-assertions
       const gameState: GameState = syncData.payload.body as any;
       await client.loadState(gameState);
       await client.startGame();
@@ -175,6 +178,10 @@ describe("Sandbox Comprehensive Tests", () => {
       }
 
       const playerInfo = gameState.players[playerId];
+
+      if (!playerInfo) {
+        throw new Error(`Player ${playerId} not found in game state`);
+      }
 
       // Setup sandbox
       await client.createRoom();
@@ -234,6 +241,7 @@ describe("Sandbox Comprehensive Tests", () => {
       console.log("Starting full sandbox workflow...");
 
       // Step 1: Setup sandbox with real game data
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-assertions
       const gameState: GameState = syncData.payload.body as any;
       const result = await client.setupAndRun(gameState);
 
@@ -249,10 +257,12 @@ describe("Sandbox Comprehensive Tests", () => {
         reconnect: false,
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const messages: any[] = [];
       wsClient.onMessage((message) => {
         messages.push(message);
-        console.log(`  Received: ${message.type}`);
+        const msgType = message.payload?.type ?? "unknown";
+        console.log(`  Received: ${msgType}`);
       });
 
       await wsClient.connect();
@@ -279,6 +289,7 @@ describe("Sandbox Comprehensive Tests", () => {
   });
 
   test("should extract player hand details from sync data", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-assertions
     const gameState: GameState = syncData.payload.body as any;
     const playerIds = Object.keys(gameState.players);
 
@@ -291,6 +302,7 @@ describe("Sandbox Comprehensive Tests", () => {
       console.log(`\nPlayer: ${player.name} (${playerId})`);
       console.log(`  Hand size: ${player.hand.length}`);
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       player.hand.forEach((card: any, index) => {
         if (card.catalogId) {
           console.log(`  [${index}] ${card.catalogId} (ID: ${card.id})`);

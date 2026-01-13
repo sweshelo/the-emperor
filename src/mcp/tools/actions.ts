@@ -3,22 +3,27 @@
  */
 
 import type { ToolDefinition } from "../types/index.ts";
-import type { ClientAction } from "../../types/game.ts";
+import type { McpClientPayload } from "../../types/game.ts";
+import {
+  parseString,
+  parseBoolean,
+  parseOptionalStringArray,
+} from "../../schemas/index.ts";
 
 // This will be injected by the MCP server
-let sendAction: ((action: ClientAction) => void) | null = null;
+let sendAction: ((action: McpClientPayload) => void) | null = null;
 
 /**
  * Set the action sender function
  */
-export function setActionSender(sender: (action: ClientAction) => void): void {
+export function setActionSender(sender: (action: McpClientPayload) => void): void {
   sendAction = sender;
 }
 
 /**
  * Helper to ensure action sender is available
  */
-function ensureActionSender(): (action: ClientAction) => void {
+function ensureActionSender(): (action: McpClientPayload) => void {
   if (!sendAction) {
     throw new Error("Action sender not initialized");
   }
@@ -47,10 +52,12 @@ export const summonUnitTool: ToolDefinition = {
   },
   handler: async (args) => {
     const sender = ensureActionSender();
-    const action: ClientAction = {
+    const playerId = parseString(args, "playerId");
+    const cardId = parseString(args, "cardId");
+    const action: McpClientPayload = {
       type: "UnitDrive",
-      player: args.playerId as string,
-      target: { id: args.cardId as string },
+      player: playerId,
+      target: { id: cardId },
     };
 
     sender(action);
@@ -59,7 +66,7 @@ export const summonUnitTool: ToolDefinition = {
       content: [
         {
           type: "text",
-          text: `Summoned unit: ${args.cardId}`,
+          text: `Summoned unit: ${cardId}`,
         },
       ],
     };
@@ -92,11 +99,14 @@ export const evolveUnitTool: ToolDefinition = {
   },
   handler: async (args) => {
     const sender = ensureActionSender();
-    const action: ClientAction = {
+    const playerId = parseString(args, "playerId");
+    const evolutionCardId = parseString(args, "evolutionCardId");
+    const baseUnitId = parseString(args, "baseUnitId");
+    const action: McpClientPayload = {
       type: "EvolveDrive",
-      player: args.playerId as string,
-      target: { id: args.evolutionCardId as string },
-      source: { id: args.baseUnitId as string },
+      player: playerId,
+      target: { id: evolutionCardId },
+      source: { id: baseUnitId },
     };
 
     sender(action);
@@ -105,7 +115,7 @@ export const evolveUnitTool: ToolDefinition = {
       content: [
         {
           type: "text",
-          text: `Evolved unit ${args.baseUnitId} with ${args.evolutionCardId}`,
+          text: `Evolved unit ${baseUnitId} with ${evolutionCardId}`,
         },
       ],
     };
@@ -134,10 +144,12 @@ export const useJokerTool: ToolDefinition = {
   },
   handler: async (args) => {
     const sender = ensureActionSender();
-    const action: ClientAction = {
+    const playerId = parseString(args, "playerId");
+    const jokerId = parseString(args, "jokerId");
+    const action: McpClientPayload = {
       type: "JokerDrive",
-      player: args.playerId as string,
-      target: { id: args.jokerId as string },
+      player: playerId,
+      target: { id: jokerId },
     };
 
     sender(action);
@@ -146,7 +158,7 @@ export const useJokerTool: ToolDefinition = {
       content: [
         {
           type: "text",
-          text: `Used JOKER: ${args.jokerId}`,
+          text: `Used JOKER: ${jokerId}`,
         },
       ],
     };
@@ -179,12 +191,15 @@ export const setTriggerTool: ToolDefinition = {
   },
   handler: async (args) => {
     const sender = ensureActionSender();
-    const action: ClientAction = {
+    const playerId = parseString(args, "playerId");
+    const cardId = parseString(args, "cardId");
+    const catalogId = parseString(args, "catalogId");
+    const action: McpClientPayload = {
       type: "TriggerSet",
-      player: args.playerId as string,
+      player: playerId,
       target: {
-        id: args.cardId as string,
-        catalogId: args.catalogId as string,
+        id: cardId,
+        catalogId: catalogId,
       },
     };
 
@@ -194,7 +209,7 @@ export const setTriggerTool: ToolDefinition = {
       content: [
         {
           type: "text",
-          text: `Set trigger/intercept: ${args.cardId}`,
+          text: `Set trigger/intercept: ${cardId}`,
         },
       ],
     };
@@ -223,10 +238,12 @@ export const attackTool: ToolDefinition = {
   },
   handler: async (args) => {
     const sender = ensureActionSender();
-    const action: ClientAction = {
+    const playerId = parseString(args, "playerId");
+    const unitId = parseString(args, "unitId");
+    const action: McpClientPayload = {
       type: "Attack",
-      player: args.playerId as string,
-      target: { id: args.unitId as string },
+      player: playerId,
+      target: { id: unitId },
     };
 
     sender(action);
@@ -235,7 +252,7 @@ export const attackTool: ToolDefinition = {
       content: [
         {
           type: "text",
-          text: `Attacked with unit: ${args.unitId}`,
+          text: `Attacked with unit: ${unitId}`,
         },
       ],
     };
@@ -264,10 +281,12 @@ export const useBootAbilityTool: ToolDefinition = {
   },
   handler: async (args) => {
     const sender = ensureActionSender();
-    const action: ClientAction = {
+    const playerId = parseString(args, "playerId");
+    const unitId = parseString(args, "unitId");
+    const action: McpClientPayload = {
       type: "Boot",
-      player: args.playerId as string,
-      target: { id: args.unitId as string },
+      player: playerId,
+      target: { id: unitId },
     };
 
     sender(action);
@@ -276,7 +295,7 @@ export const useBootAbilityTool: ToolDefinition = {
       content: [
         {
           type: "text",
-          text: `Used boot ability of unit: ${args.unitId}`,
+          text: `Used boot ability of unit: ${unitId}`,
         },
       ],
     };
@@ -305,10 +324,12 @@ export const withdrawUnitTool: ToolDefinition = {
   },
   handler: async (args) => {
     const sender = ensureActionSender();
-    const action: ClientAction = {
+    const playerId = parseString(args, "playerId");
+    const unitId = parseString(args, "unitId");
+    const action: McpClientPayload = {
       type: "Withdrawal",
-      player: args.playerId as string,
-      target: { id: args.unitId as string },
+      player: playerId,
+      target: { id: unitId },
     };
 
     sender(action);
@@ -317,7 +338,7 @@ export const withdrawUnitTool: ToolDefinition = {
       content: [
         {
           type: "text",
-          text: `Withdrew unit: ${args.unitId}`,
+          text: `Withdrew unit: ${unitId}`,
         },
       ],
     };
@@ -351,10 +372,11 @@ export const respondToChoiceTool: ToolDefinition = {
   },
   handler: async (args) => {
     const sender = ensureActionSender();
-    const choiceIds = (args.choiceIds as string[]) || [];
-    const action: ClientAction = {
+    const promptId = parseString(args, "promptId");
+    const choiceIds = parseOptionalStringArray(args, "choiceIds") || [];
+    const action: McpClientPayload = {
       type: "Choose",
-      promptId: args.promptId as string,
+      promptId: promptId,
       choice: choiceIds.length > 0 ? choiceIds : undefined,
     };
 
@@ -364,9 +386,10 @@ export const respondToChoiceTool: ToolDefinition = {
       content: [
         {
           type: "text",
-          text: choiceIds.length > 0
-            ? `Responded to choice with: ${choiceIds.join(", ")}`
-            : "Declined/cancelled choice",
+          text:
+            choiceIds.length > 0
+              ? `Responded to choice with: ${choiceIds.join(", ")}`
+              : "Declined/cancelled choice",
         },
       ],
     };
@@ -395,10 +418,12 @@ export const endTurnTool: ToolDefinition = {
   },
   handler: async (args) => {
     const sender = ensureActionSender();
-    const action: ClientAction = {
+    const promptId = parseString(args, "promptId");
+    const playerId = parseString(args, "playerId");
+    const action: McpClientPayload = {
       type: "Continue",
-      promptId: args.promptId as string,
-      player: args.playerId as string,
+      promptId: promptId,
+      player: playerId,
     };
 
     sender(action);
@@ -436,10 +461,12 @@ export const mulliganTool: ToolDefinition = {
   },
   handler: async (args) => {
     const sender = ensureActionSender();
-    const action: ClientAction = {
+    const playerId = parseString(args, "playerId");
+    const keep = parseBoolean(args, "keep");
+    const action: McpClientPayload = {
       type: "Mulligan",
-      action: (args.keep as boolean) ? "done" : "retry",
-      player: args.playerId as string,
+      action: keep ? "done" : "retry",
+      player: playerId,
     };
 
     sender(action);
@@ -448,7 +475,7 @@ export const mulliganTool: ToolDefinition = {
       content: [
         {
           type: "text",
-          text: (args.keep as boolean) ? "Kept hand" : "Redrawing hand",
+          text: keep ? "Kept hand" : "Redrawing hand",
         },
       ],
     };

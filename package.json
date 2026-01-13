@@ -6,20 +6,28 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "preinstall": "git submodule update --init --recursive",
     "dev": "bun run --watch src/index.ts",
     "start": "bun run src/index.ts",
     "mcp": "bun run src/mcp/server.ts",
     "test": "bun test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . && oxlint",
+    "lint:eslint": "eslint .",
+    "lint:oxlint": "oxlint"
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "@types/node": "^22.10.5"
+    "@types/node": "^22.10.5",
+    "eslint": "^9.18.0",
+    "typescript-eslint": "^8.20.0",
+    "oxlint": "^0.16.0"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.25.2"
+    "@modelcontextprotocol/sdk": "^1.25.2",
+    "zod": "^4.3.5"
   }
 }

@@ -4,6 +4,12 @@
 
 import type { ToolDefinition } from "../types/index.ts";
 import { catalogService } from "../../catalog/index.ts";
+import {
+  parseString,
+  parseNumber,
+  parseOptionalNumber,
+  parseCardType,
+} from "../../schemas/index.ts";
 
 /**
  * Get card information by catalog ID
@@ -22,7 +28,7 @@ export const getCardTool: ToolDefinition = {
     required: ["catalogId"],
   },
   handler: async (args) => {
-    const catalogId = args.catalogId as string;
+    const catalogId = parseString(args, "catalogId");
     const card = catalogService.getCard(catalogId);
 
     if (!card) {
@@ -69,8 +75,8 @@ export const searchCardsByNameTool: ToolDefinition = {
     required: ["query"],
   },
   handler: async (args) => {
-    const query = args.query as string;
-    const limit = (args.limit as number) || 10;
+    const query = parseString(args, "query");
+    const limit = parseOptionalNumber(args, "limit", 10);
     const results = catalogService.searchByName(query).slice(0, limit);
 
     return {
@@ -105,8 +111,8 @@ export const searchCardsByAbilityTool: ToolDefinition = {
     required: ["query"],
   },
   handler: async (args) => {
-    const query = args.query as string;
-    const limit = (args.limit as number) || 10;
+    const query = parseString(args, "query");
+    const limit = parseOptionalNumber(args, "limit", 10);
     const results = catalogService.searchByAbility(query).slice(0, limit);
 
     return {
@@ -142,8 +148,8 @@ export const getCardsByTypeTool: ToolDefinition = {
     required: ["cardType"],
   },
   handler: async (args) => {
-    const cardType = args.cardType as any;
-    const limit = (args.limit as number) || 20;
+    const cardType = parseCardType(args, "cardType");
+    const limit = parseOptionalNumber(args, "limit", 20);
     const results = catalogService.getCardsByType(cardType).slice(0, limit);
 
     return {
@@ -182,9 +188,9 @@ export const getCardsByCostRangeTool: ToolDefinition = {
     required: ["minCost", "maxCost"],
   },
   handler: async (args) => {
-    const minCost = args.minCost as number;
-    const maxCost = args.maxCost as number;
-    const limit = (args.limit as number) || 20;
+    const minCost = parseNumber(args, "minCost");
+    const maxCost = parseNumber(args, "maxCost");
+    const limit = parseOptionalNumber(args, "limit", 20);
     const results = catalogService
       .getCardsByCostRange(minCost, maxCost)
       .slice(0, limit);
