@@ -6,15 +6,10 @@ import React, { useState, useCallback, useEffect } from "react";
 import { render, Box, Text, Static, useInput, useApp, useStdin } from "ink";
 import TextInput from "ink-text-input";
 import Spinner from "ink-spinner";
+import type { TuiMessage } from "../types/ai.ts";
 
-/**
- * Message type for log display
- */
-export interface TuiMessage {
-  type: "system" | "game" | "user" | "error" | "ai";
-  content: string;
-  timestamp?: number;
-}
+// Re-export for backward compatibility
+export type { TuiMessage };
 
 /**
  * Props for BuddyTui component

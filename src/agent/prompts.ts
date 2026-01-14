@@ -3,20 +3,14 @@
  */
 
 import type { DecisionContext } from "../types/agent.ts";
-import type { IPlayer, IUnit, ICard, ChoicesMessage } from "../types/game.ts";
+import type { IPlayer, ICard, ChoicesMessage } from "../types/game.ts";
 import { type CatalogCard, isJokerCard } from "../schemas/catalog.ts";
 import type { IAtom } from "../../suit/types/game/card/index.ts";
 import { join } from "node:path";
 import { readdirSync } from "node:fs";
 import { encode } from "@toon-format/toon";
-
-/**
- * Type guard to check if an IAtom has catalogId (is actually an ICard)
- * Uses in operator for runtime property checking
- */
-function hasCardInfo(atom: IAtom): atom is ICard {
-  return "catalogId" in atom && "lv" in atom;
-}
+import { hasCardInfo } from "./utils/type-guards.ts";
+import { COLOR_NAMES } from "./utils/formatters.ts";
 
 /**
  * Directory containing documentation files for the system prompt
@@ -25,7 +19,6 @@ const DOCS_DIR = join(import.meta.dir, "../data/docs");
 
 /**
  * Load all documentation files from data/docs directory
- * Returns concatenated content of all .md files
  */
 export async function loadSystemPromptDocs(): Promise<string> {
   const files = readdirSync(DOCS_DIR).filter((f) => f.endsWith(".md"));
@@ -66,18 +59,6 @@ You MUST respond with a valid JSON object in the following format:
 }
 
 /**
- * Color ID to name mapping
- */
-const COLOR_NAMES: Record<number, string> = {
-  1: "Red",
-  2: "Yellow",
-  3: "Blue",
-  4: "Green",
-  5: "Purple",
-  6: "Colorless",
-};
-
-/**
  * Structured card data for TOON encoding
  */
 interface CardData {
@@ -104,7 +85,6 @@ interface UnitData {
  * Convert card to structured data for TOON encoding
  */
 function cardToData(card: ICard, catalogInfo?: CatalogCard): CardData {
-  // Handle JOKER cards (no color or bp)
   if (catalogInfo && isJokerCard(catalogInfo)) {
     return {
       id: card.id,
@@ -127,7 +107,7 @@ function cardToData(card: ICard, catalogInfo?: CatalogCard): CardData {
 /**
  * Convert unit to structured data for TOON encoding
  */
-function unitToData(unit: IUnit, catalogInfo?: CatalogCard): UnitData {
+function unitToData(unit: IPlayer["field"][number], catalogInfo?: CatalogCard): UnitData {
   return {
     id: unit.id,
     name: catalogInfo?.name ?? `Unit#${unit.catalogId}`,
@@ -148,7 +128,6 @@ function formatPlayerState(
   const label = isMyPlayer ? "YOUR" : "OPPONENT'S";
   const lines: string[] = [`## ${label} STATE`];
 
-  // Resources as structured data
   const resources = {
     life: `${player.life.current}/${player.life.max}`,
     cp: `${player.cp.current}/${player.cp.max}`,
@@ -157,7 +136,6 @@ function formatPlayerState(
   };
   lines.push(encode(resources));
 
-  // Hand (only show details for own hand)
   if (isMyPlayer && player.hand.length > 0) {
     lines.push(`### Hand (${player.hand.length} cards)`);
     const handData = player.hand
@@ -168,7 +146,6 @@ function formatPlayerState(
     lines.push(`### Hand: ${player.hand.length} cards`);
   }
 
-  // Field
   if (player.field.length > 0) {
     lines.push(`### Field (${player.field.length} units)`);
     const fieldData = player.field.map((unit) => unitToData(unit, catalogLookup(unit.catalogId)));
@@ -177,7 +154,6 @@ function formatPlayerState(
     lines.push(`### Field: Empty`);
   }
 
-  // JOKER info
   if (player.joker.card.length > 0) {
     const jokerData = player.joker.card.map((j) => ({ chara: j.chara, cost: j.cost }));
     lines.push(`### JOKER`);
@@ -197,19 +173,16 @@ export function formatGameStatePrompt(
   const { gameState, myPlayerId } = context;
   const lines: string[] = [];
 
-  // Game info
   lines.push(`# GAME STATE`);
   lines.push(`Round: ${gameState.game.round}, Turn: ${gameState.game.turn}`);
   lines.push("");
 
-  // My state
   const myPlayer = gameState.players[myPlayerId];
   if (myPlayer) {
     lines.push(formatPlayerState(myPlayer, true, catalogLookup));
     lines.push("");
   }
 
-  // Opponent state
   const opponentId = Object.keys(gameState.players).find((id) => id !== myPlayerId);
   if (opponentId) {
     const opponent = gameState.players[opponentId];
@@ -229,7 +202,6 @@ export function formatChoicePrompt(choice: ChoicesMessage): string {
 
   lines.push(`# CURRENT CHOICE`);
 
-  // Choice metadata as structured data
   const choiceMeta = {
     title: choice.choices.title,
     type: choice.choices.type,
@@ -242,16 +214,12 @@ export function formatChoicePrompt(choice: ChoicesMessage): string {
   lines.push("");
   lines.push("## Available options");
 
-  // Format items based on type
   const items = choice.choices.items.map((item) => {
     if ("bp" in item) {
-      // It's a unit
       return { id: item.id, catalogId: item.catalogId, bp: item.bp };
     } else if ("catalogId" in item) {
-      // It's a card
       return { id: item.id, catalogId: item.catalogId };
     } else if ("name" in item) {
-      // It's an option
       return { id: item.id, name: item.name };
     }
     return { id: "unknown" };
@@ -273,7 +241,6 @@ export function formatAvailableActionsPrompt(
 
   lines.push(`# AVAILABLE ACTIONS`);
 
-  // If there's a choice, the main action is to respond
   if (choice) {
     lines.push("");
     lines.push(`## respond_to_choice`);
@@ -294,14 +261,12 @@ export function formatAvailableActionsPrompt(
     return lines.join("\n");
   }
 
-  // Normal turn actions
   const myPlayer = gameState.players[myPlayerId];
   if (!myPlayer) {
     lines.push("No player state available");
     return lines.join("\n");
   }
 
-  // Summon units from hand
   const playableUnits = myPlayer.hand.filter((atom): atom is ICard => {
     if (!hasCardInfo(atom)) return false;
     const info = catalogLookup(atom.catalogId);
@@ -321,7 +286,6 @@ export function formatAvailableActionsPrompt(
     lines.push(encode({ playable: units }));
   }
 
-  // Attack with units
   const attackableUnits = myPlayer.field.filter((unit) => unit.active);
   if (attackableUnits.length > 0) {
     lines.push("");
@@ -334,7 +298,6 @@ export function formatAvailableActionsPrompt(
     lines.push(encode({ attackable: units }));
   }
 
-  // Set triggers
   const triggerCards = myPlayer.hand.filter((atom): atom is ICard => {
     if (!hasCardInfo(atom)) return false;
     const info = catalogLookup(atom.catalogId);
@@ -354,7 +317,6 @@ export function formatAvailableActionsPrompt(
     lines.push(encode({ settable: triggers }));
   }
 
-  // End turn is always available
   lines.push("");
   lines.push(`## end_turn`);
   lines.push(`End your turn and pass to opponent.`);
@@ -371,21 +333,17 @@ export function buildDecisionPrompt(
 ): string {
   const parts: string[] = [];
 
-  // Game state
   parts.push(formatGameStatePrompt(context, catalogLookup));
   parts.push("");
 
-  // Current choice (if any)
   if (context.choice) {
     parts.push(formatChoicePrompt(context.choice));
     parts.push("");
   }
 
-  // Available actions
   parts.push(formatAvailableActionsPrompt(context, catalogLookup));
   parts.push("");
 
-  // Instruction
   parts.push("What action do you take? Respond with JSON only.");
 
   return parts.join("\n");
@@ -405,7 +363,6 @@ export function buildMulliganPrompt(
   lines.push("");
   lines.push("## Starting hand");
 
-  // Convert hand to TOON format
   const handData = hand
     .filter((atom): atom is ICard => hasCardInfo(atom))
     .map((card) => cardToData(card, catalogLookup(card.catalogId)));
